@@ -38,10 +38,21 @@ class Mic(object):
         return None, pyaudio.paContinue
 
     def start(self):
-        self.queue.queue.clear()
-        self.stream.start_stream()
-        log.debug('start recording')
+        if self.stream.is_stopped():
+            self.queue.queue.clear()
+            self.stream.start_stream()
+            log.info('start recording')
+        else:
+            log.info('already started')
 
+    def stop(self):
+        if not self.stream.is_stopped():
+            self.quit_event.set()
+            self.stream.stop_stream()
+            self.queue.put('')
+            log.info('stop recording')
+        else:
+            log.info('already stopped')
 
     def read_chunked(self):
         self.quit_event.clear()
@@ -58,23 +69,15 @@ class Mic(object):
 
             yield frames
 
-    def stop(self):
-        self.quit_event.set()
-        self.stream.stop_stream()
-        self.queue.put('')
-        log.debug('stop recording')
-
     def __enter__(self):
-        if self.stream.is_stopped():
-            self.start()
+        self.start()
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.stop()
 
     def __iter__(self):
-        if self.stream.is_stopped():
-            self.start()
+        self.start()
         return self.read_chunked()
 
 

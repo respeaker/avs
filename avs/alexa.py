@@ -28,7 +28,7 @@ logging.basicConfig(level=logging.DEBUG)
 log = logging.getLogger(__name__)
 
 
-class AlexaVoiceService(object):
+class Alexa(object):
     API_VERSION = 'v20160207'
 
     def __init__(self, tokens_filename, audio):
@@ -54,7 +54,7 @@ class AlexaVoiceService(object):
         t = threading.Thread(target=self.loop)
         t.daemon = True
         t.start()
-        self.ready.wait(6)
+        self.ready.wait()
 
     def stop(self):
         self.done.set()
@@ -389,11 +389,16 @@ class AlexaVoiceService(object):
         self.stop()
 
 
-def main(tokens):
+def main():
     from mic import Mic
+    import sys
 
-    mic = Mic()
-    with AlexaVoiceService(tokens, mic) as alexa:
+    if len(sys.argv) < 2:
+        print('Usage: {} tokens.json'.format(sys.argv[0]))
+        sys.exit(1)
+
+    audio = Mic()
+    with Alexa(sys.argv[1], audio) as alexa:
         while True:
             try:
                 try:
@@ -401,17 +406,10 @@ def main(tokens):
                 except SyntaxError:
                     pass
 
-                mic.start()
-                alexa.SpeechRecognizer.Recognize(mic)
+                alexa.SpeechRecognizer.Recognize(audio).wait(20)
             except KeyboardInterrupt:
                 break
 
 
 if __name__ == '__main__':
-    import sys
-
-    if len(sys.argv) < 2:
-        print('Usage: {} tokens.json'.format(sys.argv[0]))
-        sys.exit(1)
-
-    main(sys.argv[1])
+    main()

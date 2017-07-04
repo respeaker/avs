@@ -24,19 +24,24 @@ test_requirements = [
 ]
 
 setup(
-    name='alexa_voice_service',
-    version='0.1.0',
-    description="Python implementation of Alexa Voice Service",
+    name='avs',
+    version='0.0.1',
+    description="Python implementation of Alexa Voice Service App",
     long_description=readme + '\n\n' + history,
     author="Yihui Xiong",
     author_email='yihui.xiong@hotmail.com',
-    url='https://github.com/respeaker/alexa_voice_service',
-    packages=find_packages(include=['alexa_voice_service']),
+    url='https://github.com/respeaker/avs',
+    packages=find_packages(include=['avs']),
     include_package_data=True,
     install_requires=requirements,
+    entry_points={
+        'console_scripts': [
+            'alexa=avs.alexa:main'
+        ],
+    },
     license="GNU General Public License v3",
     zip_safe=False,
-    keywords='alexa_voice_service',
+    keywords='alexa voice service',
     classifiers=[
         'Development Status :: 2 - Pre-Alpha',
         'Intended Audience :: Developers',

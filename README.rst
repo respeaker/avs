@@ -1,28 +1,28 @@
-==========================
-Python Alexa Voice Service
-==========================
+==============================
+Python Alexa Voice Service App
+==============================
 
 
-.. image:: https://img.shields.io/pypi/v/alexa_voice_service.svg
-        :target: https://pypi.python.org/pypi/alexa_voice_service
+.. image:: https://img.shields.io/pypi/v/avs.svg
+        :target: https://pypi.python.org/pypi/avs
 
-.. image:: https://img.shields.io/travis/respeaker/alexa_voice_service.svg
-        :target: https://travis-ci.org/respeaker/alexa_voice_service
+.. image:: https://img.shields.io/travis/respeaker/avs.svg
+        :target: https://travis-ci.org/respeaker/avs
 
-.. image:: https://readthedocs.org/projects/alexa-voice-service/badge/?version=latest
-        :target: https://alexa-voice-service.readthedocs.io/en/latest/?badge=latest
+.. image:: https://readthedocs.org/projects/avs/badge/?version=latest
+        :target: https://avs.readthedocs.io/en/latest/?badge=latest
         :alt: Documentation Status
 
-.. image:: https://pyup.io/repos/github/respeaker/alexa_voice_service/shield.svg
-     :target: https://pyup.io/repos/github/respeaker/alexa_voice_service/
+.. image:: https://pyup.io/repos/github/respeaker/avs/shield.svg
+     :target: https://pyup.io/repos/github/respeaker/avs
      :alt: Updates
 
 
-Python implementation of Alexa Voice Service
+Python implementation of Alexa Voice Service app
 
 
 * Free software: GNU General Public License v3
-* Documentation: https://alexa-voice-service.readthedocs.io.
+* Documentation: https://avs.readthedocs.io.
 
 
 Features

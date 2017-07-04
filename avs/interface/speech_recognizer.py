@@ -14,7 +14,7 @@ class SpeechRecognizer(object):
     def __init__(self, alexa):
         self.alexa = alexa
         self.profile = 'NEAR_FIELD'
-        self.stop = Event()
+        self.done = Event()
 
     def Recognize(self, audio, dialog=None, initiator=None, timeout=12000):
         if dialog is None:
@@ -39,19 +39,25 @@ class SpeechRecognizer(object):
             }
         }
 
+        audio.start()
+        self.done.clear()
+
         def gen():
-            with audio as chunks:
-                self.stop.clear()
-                time_elapsed = 0
-                for chunk in chunks:
-                    if self.stop.is_set() or time_elapsed >= timeout:
-                        log.info('stop recording')
-                        break
-                    yield chunk
-                    time_elapsed += 10  # 10 ms chunk
+            time_elapsed = 0
+            for chunk in audio:
+                if self.done.is_set() or time_elapsed >= timeout:
+                    log.info('stop recording')
+                    break
+                yield chunk
+                time_elapsed += 10  # 10 ms chunk
+
+            audio.stop()
+            self.done.set()
 
         event['attachment'] = gen()
         self.alexa.event_queue.put(event)
+
+        return self.done
 
     # {
     #   "directive": {
@@ -66,7 +72,7 @@ class SpeechRecognizer(object):
     #     }
     # }
     def StopCapture(self, directive):
-        self.stop.set()
+        self.done.set()
         log.info('StopCapture')
 
     # {
