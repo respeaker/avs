@@ -4,13 +4,39 @@ class AudioPlayer(object):
 
     def __init__(self, alexa):
         self.alexa = alexa
-        
-    def Play(self):
-        pass
 
-    def Stop(self):
-        pass
-        
+    # {
+    #     "directive": {
+    #         "header": {
+    #             "namespace": "AudioPlayer",
+    #             "name": "Play",
+    #             "messageId": "{{STRING}}",
+    #             "dialogRequestId": "{{STRING}}"
+    #         },
+    #         "payload": {
+    #             "playBehavior": "{{STRING}}",
+    #             "audioItem": {
+    #                 "audioItemId": "{{STRING}}",
+    #                 "stream": {
+    #                     "url": "{{STRING}}",
+    #                     "streamFormat": "AUDIO_MPEG"
+    #                     "offsetInMilliseconds": {{LONG}},
+    #                     "expiryTime": "{{STRING}}",
+    #                     "progressReport": {
+    #                         "progressReportDelayInMilliseconds": {{LONG}},
+    #                         "progressReportIntervalInMilliseconds": {{LONG}}
+    #                     },
+    #                     "token": "{{STRING}}",
+    #                     "expectedPreviousToken": "{{STRING}}"
+    #                 }
+    #             }
+    #         }
+    #     }
+    # }
+    def Play(self, directive):
+        behavior = directive['payload']['playBehavior']
+
+
     def PlaybackStarted(self):
         pass
 
@@ -35,6 +61,21 @@ class AudioPlayer(object):
     def PlaybackFailed(self):
         pass
 
+    # {
+    #     "directive": {
+    #         "header": {
+    #             "namespace": "AudioPlayer",
+    #             "name": "Stop",
+    #             "messageId": "{{STRING}}",
+    #             "dialogRequestId": "{{STRING}}"
+    #         },
+    #         "payload": {
+    #         }
+    #     }
+    # }
+    def Stop(self, directive):
+        pass
+
     def PlaybackStopped(self):
         pass
 
@@ -44,8 +85,26 @@ class AudioPlayer(object):
     def PlaybackResumed(self):
         pass
 
-    def ClearQueue(self):
-        pass
+    # {
+    #     "directive": {
+    #         "header": {
+    #             "namespace": "AudioPlayer",
+    #             "name": "ClearQueue",
+    #             "messageId": "{{STRING}}",
+    #             "dialogRequestId": "{{STRING}}"
+    #         },
+    #         "payload": {
+    #             "clearBehavior": "{{STRING}}"
+    #         }
+    #     }
+    # }
+    def ClearQueue(self, directive):
+        behavior = directive['payload']['clearBehavior']
+        if behavior == 'CLEAR_ALL':
+            pass
+        elif behavior == 'CLEAR_ENQUEUED':
+            pass
+
 
     def PlaybackQueueCleared(self):
         pass

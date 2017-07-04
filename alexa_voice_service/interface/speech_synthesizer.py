@@ -1,13 +1,13 @@
 
-
-
+import uuid
+import os
 
 class SpeechSynthesizer(object):
     STATES = {'PLAYING', 'FINISHED'}
 
     def __init__(self, alexa):
         self.alexa = alexa
-        self.state = 'PLAYING'
+        self.state = 'FINISHED'
         self.token = ''
 
     # {
@@ -30,26 +30,42 @@ class SpeechSynthesizer(object):
     # Content-ID: {{Audio Item CID}}
 
     # {{BINARY AUDIO ATTACHMENT}}
-    def Speak(self, playload, attachment):
-        pass
-        
-    # {
-    #     "event": {
-    #         "header": {
-    #             "namespace": "SpeechSynthesizer",
-    #             "name": "SpeechStarted",
-    #             "messageId": "{{STRING}}"
-    #         },
-    #         "payload": {
-    #             "token": "{{STRING}}"
-    #         }
-    #     }
-    # }
+    def Speak(self, directive, attachment=None):
+        self.token = directive['payload']['token']
+        url = directive['payload']['url']
+        if url.startswith('cid:'):
+            os.system('mpv {}.mp3'.format(url[4:]))
+
     def SpeechStarted(self):
-        pass
+        event = {
+            "event": {
+                "header": {
+                    "namespace": "SpeechSynthesizer",
+                    "name": "SpeechStarted",
+                    "messageId": uuid.uuid4().hex
+                },
+                "payload": {
+                    "token": self.token
+                }
+            }
+        }
+        self.alexa.event_queue.put(event)
+
 
     def SpeechFinished(self):
-        pass
+        event = {
+            "event": {
+                "header": {
+                    "namespace": "SpeechSynthesizer",
+                    "name": "SpeechFinished",
+                    "messageId": uuid.uuid4().hex
+                },
+                "payload": {
+                    "token": self.token
+                }
+            }
+        }
+        self.alexa.event_queue.put(event)
 
     @property
     def context(self):

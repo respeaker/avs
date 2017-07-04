@@ -4,6 +4,7 @@
 import cgi
 import io
 import json
+import uuid
 
 try:
     import Queue as queue
@@ -24,13 +25,11 @@ from interface.system import System
 import logging
 
 logging.basicConfig(level=logging.DEBUG)
-log = logging.getLogger('alexa')
+log = logging.getLogger(__name__)
 
 
 class AlexaVoiceService(object):
     API_VERSION = 'v20160207'
-
-    _content_cache = {}
 
     def __init__(self, tokens_filename, audio):
         self.event_queue = queue.Queue()
@@ -41,23 +40,37 @@ class AlexaVoiceService(object):
         self.Alerts = Alerts(self)
         self.System = System(self)
 
-        self._audio = audio
+        self.ready = threading.Event()
+        self.done = threading.Event()
+
+        self.audio = audio
+
         self._tokens_filename = tokens_filename
         self._tokens = None
 
-        self._ping_time = None
-        self._last_user_activity = None
+        self._last_activity = None
 
     def start(self):
         t = threading.Thread(target=self.loop)
         t.daemon = True
         t.start()
+        self.ready.wait(6)
+
+    def stop(self):
+        self.done.set()
+        self.ready.clear()
 
     def loop(self):
+        while not self.done.is_set():
+            try:
+                self._loop()
+            except Exception as e:
+                log.exception(e)
+                log.info('reconnect...')
 
-        # ping every 5 minutes (60 seconds early for latency) to maintain the connection
-        self._ping_time = datetime.datetime.utcnow() + datetime.timedelta(seconds=240)
-        self._last_user_activity = datetime.datetime.utcnow()
+    def _loop(self):
+        self.done.clear()
+        self.event_queue.queue.clear()
 
         conn = hyper.HTTP20Connection(
             'avs-alexa-na.amazon.com:443', force_proto='h2')
@@ -79,9 +92,11 @@ class AlexaVoiceService(object):
 
         self.System.SynchronizeState()
 
+        self.ready.set()
+
         downchannel_buffer = io.BytesIO()
         boundary = 'this-is-a-boundary'
-        while True:
+        while not self.done.is_set():
             # log.info("Waiting for event to send to AVS")
             # log.info("Connection socket can_read %s", conn._sock.can_read)
             try:
@@ -89,22 +104,20 @@ class AlexaVoiceService(object):
             except queue.Empty:
                 event = None
 
-            # TODO check that connection is still functioning and reestablish if needed
+            # we want to avoid blocking if the data wasn't for stream downchannel
+            while conn._sock.can_read:
+                conn._single_read()
 
-            while downchannel.data or (conn._sock and conn._sock.can_read):
-                # we want to avoid blocking if the data wasn't for stream downchannel
-                if conn._sock and conn._sock.can_read:
-                    conn._recv_cb()
-                while downchannel.data:
-                    framebytes = downchannel._read_one_frame()
-                    log.info(framebytes)
-                    # log.info(framebytes.split(downchannel_boundary))
-                    self._read_response(
-                        framebytes, downchannel_boundary, downchannel_buffer)
+            while downchannel.data:
+                framebytes = downchannel._read_one_frame()
+                self._read_response(
+                    framebytes, downchannel_boundary, downchannel_buffer)
 
             if event is None:
                 self._ping(conn)
                 continue
+
+            self._last_activity = datetime.datetime.utcnow()
 
             headers = {
                 ':method': 'POST',
@@ -144,25 +157,31 @@ class AlexaVoiceService(object):
                 for chunk in attachment:
                     conn.send(chunk, final=False, stream_id=stream_id)
 
+                    # check if StopCapture directive is received
+                    while conn._sock.can_read:
+                        conn._single_read()
+
+                    while downchannel.data:
+                        framebytes = downchannel._read_one_frame()
+                        self._read_response(framebytes, downchannel_boundary, downchannel_buffer)
+
             end_part = '\r\n--{}--'.format(boundary)
             conn.send(end_part.encode('utf-8'), final=True, stream_id=stream_id)
 
-            log.info("Alexa: Made request using stream %s", stream_id)
+            log.info("wait for response")
             resp = conn.get_response(stream_id)
-            log.info("Alexa HTTP status code: %s", resp.status)
-            log.debug(resp.headers)
+            log.info("status code: %s", resp.status)
 
             if resp.status == 200:
                 self._read_response(resp)
             elif resp.status == 204:
                 pass
             else:
-                log.warning("AVS status code unexpected: %s", resp.status)
+                log.warning("unexpected status code: %s", resp.status)
                 log.warning(resp.headers)
                 log.warning(resp.read())
 
     def _read_response(self, response, boundary=None, buffer=None):
-        # log.debug("_read_response(%s, %s)", response, boundary)
         if boundary:
             endboundary = boundary + b"--"
         else:
@@ -218,18 +237,20 @@ class AlexaVoiceService(object):
                     in_payload = False
                     if content_type == "application/json":
                         log.info("Finished downloading JSON")
-                        json_payload = json.loads(
-                            payload.getvalue().decode('utf-8'))
-                        # log.debug(json_payload)
+                        json_payload = json.loads(payload.getvalue().decode('utf-8'))
+                        log.debug(json_payload)
                         if 'directive' in json_payload:
                             directives.append(json_payload['directive'])
                     else:
-                        log.info("Finished downloading {} which is {}".format(content_type,
-                                                                              content_id))
+                        log.info("Finished downloading {} which is {}".format(content_type, content_id))
                         payload.seek(0)
                         # TODO, start to stream this to speakers as soon as we start getting bytes
                         # strip < and >
-                        self._content_cache[content_id[1:-1]] = payload
+                        content_id = content_id[1:-1]
+                        with open('{}.mp3'.format(content_id), 'wb') as f:
+                            f.write(payload.read())
+
+                        log.info('write audio to {}.mp3'.format(content_id))
 
                 continue
             elif on_boundary:
@@ -276,29 +297,42 @@ class AlexaVoiceService(object):
                 buffer.write(b"\r\n")
 
         for directive in directives:
-            # TODO do this when we get to the end of the JSON block
-            # rather than wait for the entire HTTP payload, so we can
-            # start acting on it right away - will require potential
-            # waiting on audio data
             self._handle_directive(directive)
 
     def _handle_directive(self, directive):
-        print(json.dumps(directive, indent=4))
+        log.debug(json.dumps(directive, indent=4))
+        try:
+            namespace = directive['header']['namespace']
+            name = directive['header']['name']
+            if hasattr(self, namespace):
+                interface = getattr(self, namespace)
+                directive_func = getattr(interface, name, None)
+                if directive_func:
+                    directive_func(directive)
+                else:
+                    log.info('{}.{} is not implemented yet'.format(namespace, name))
+            else:
+                log.info('{} is not implemented yet'.format(namespace))
+
+        except KeyError as e:
+            log.exception(e)
+        except Exception as e:
+            log.exception(e)
 
     def _ping(self, connection):
-        # ping every 5 minutes (60 seconds early for latency) to maintain the connection
-        if datetime.datetime.utcnow() >= self._ping_time:
-            ping_stream_id = connection.request('GET', '/ping',
-                                                headers={'Authorization': 'Bearer {}'.format(self.token)})
-            resp = connection.get_response(ping_stream_id)
-            if resp.status != 200 and resp.status != 204:
-                log.warning(resp)
-                # TODO On a failed PING the connection should be closed and a new connection should be immediately created.
-                # TODO https://developer.amazon.com/public/solutions/alexa/alexa-voice-service/docs/managing-an-http-2-connection
-                raise ValueError("/ping requests returned {}".format(resp.status))
+        # ping every 5 minutes (30 seconds early for latency) to maintain the connection
+        if datetime.datetime.utcnow() - self._last_activity > datetime.timedelta(seconds=270):
+            # ping_stream_id = connection.request('GET', '/ping',
+            #                                     headers={'authorization': 'Bearer {}'.format(self.token)})
+            # resp = connection.get_response(ping_stream_id)
+            # if resp.status != 200 and resp.status != 204:
+            #     raise ValueError("/ping requests returned {}".format(resp.status))
 
-            # ping every 5 minutes (60 seconds early for latency) to maintain the connection
-            self._ping_time = datetime.datetime.utcnow() + datetime.timedelta(seconds=240)
+            connection.ping(uuid.uuid4().hex[:8])
+
+            self._last_activity = datetime.datetime.utcnow()
+
+            log.debug('ping at {}'.format(self._last_activity.strftime("%a %b %d %H:%M:%S %Y")))
 
     @property
     def context(self):
@@ -352,20 +386,32 @@ class AlexaVoiceService(object):
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        pass
+        self.stop()
 
 
-def main():
+def main(tokens):
+    from mic import Mic
+
+    mic = Mic()
+    with AlexaVoiceService(tokens, mic) as alexa:
+        while True:
+            try:
+                try:
+                    input('press ENTER to talk with alexa')
+                except SyntaxError:
+                    pass
+
+                mic.start()
+                alexa.SpeechRecognizer.Recognize(mic)
+            except KeyboardInterrupt:
+                break
+
+
+if __name__ == '__main__':
     import sys
-    import time
 
     if len(sys.argv) < 2:
         print('Usage: {} tokens.json'.format(sys.argv[0]))
         sys.exit(1)
 
-    with AlexaVoiceService(sys.argv[1], None) as alexa:
-        time.sleep(1000)
-
-
-if __name__ == '__main__':
-    main()
+    main(sys.argv[1])
