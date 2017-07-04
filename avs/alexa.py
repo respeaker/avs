@@ -15,12 +15,12 @@ import datetime
 
 import hyper
 
-from interface.alerts import Alerts
-from interface.audio_player import AudioPlayer
-from interface.speaker import Speaker
-from interface.speech_recognizer import SpeechRecognizer
-from interface.speech_synthesizer import SpeechSynthesizer
-from interface.system import System
+from avs.interface.alerts import Alerts
+from avs.interface.audio_player import AudioPlayer
+from avs.interface.speaker import Speaker
+from avs.interface.speech_recognizer import SpeechRecognizer
+from avs.interface.speech_synthesizer import SpeechSynthesizer
+from avs.interface.system import System
 
 import logging
 
@@ -390,7 +390,7 @@ class Alexa(object):
 
 
 def main():
-    from mic import Mic
+    from avs.mic import Mic
     import sys
 
     if len(sys.argv) < 2:
