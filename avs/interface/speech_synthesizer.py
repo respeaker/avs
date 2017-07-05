@@ -1,6 +1,8 @@
 
 import uuid
 import os
+import tempfile
+
 
 class SpeechSynthesizer(object):
     STATES = {'PLAYING', 'FINISHED'}
@@ -34,7 +36,10 @@ class SpeechSynthesizer(object):
         self.token = directive['payload']['token']
         url = directive['payload']['url']
         if url.startswith('cid:'):
-            os.system('mpv {}.mp3'.format(url[4:]))
+            mp3_file = os.path.join(tempfile.gettempdir(), url[4:] + '.mp3')
+            if os.path.isfile(mp3_file):
+                os.system('mpv "{}"'.format(mp3_file))
+                os.system('rm -rf "{}"'.format(mp3_file))
 
     def SpeechStarted(self):
         event = {

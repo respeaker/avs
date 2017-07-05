@@ -12,7 +12,9 @@ with open('HISTORY.rst') as history_file:
     history = history_file.read()
 
 requirements = [
-    'hyper'
+    'hyper',
+    'tornado',
+    'requests'
 ]
 
 setup_requirements = [
@@ -36,7 +38,8 @@ setup(
     install_requires=requirements,
     entry_points={
         'console_scripts': [
-            'alexa=avs.alexa:main'
+            'alexa-tap=avs.alexa:main',
+            'alexa-auth=avs.auth:main'
         ],
     },
     license="GNU General Public License v3",
@@ -50,7 +53,6 @@ setup(
         "Programming Language :: Python :: 2",
         'Programming Language :: Python :: 2.7',
         'Programming Language :: Python :: 3',
-        'Programming Language :: Python :: 3.3',
         'Programming Language :: Python :: 3.4',
         'Programming Language :: Python :: 3.5',
     ],

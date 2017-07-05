@@ -23,15 +23,17 @@ from avs.interface.speech_synthesizer import SpeechSynthesizer
 from avs.interface.system import System
 
 import logging
+import os
+import tempfile
 
-logging.basicConfig(level=logging.DEBUG)
+
 log = logging.getLogger(__name__)
 
 
 class Alexa(object):
     API_VERSION = 'v20160207'
 
-    def __init__(self, tokens_filename, audio):
+    def __init__(self, config, audio):
         self.event_queue = queue.Queue()
         self.SpeechRecognizer = SpeechRecognizer(self)
         self.SpeechSynthesizer = SpeechSynthesizer(self)
@@ -45,8 +47,7 @@ class Alexa(object):
 
         self.audio = audio
 
-        self._tokens_filename = tokens_filename
-        self._tokens = None
+        self._config = config
 
         self._last_activity = None
 
@@ -247,7 +248,7 @@ class Alexa(object):
                         # TODO, start to stream this to speakers as soon as we start getting bytes
                         # strip < and >
                         content_id = content_id[1:-1]
-                        with open('{}.mp3'.format(content_id), 'wb') as f:
+                        with open(os.path.join(tempfile.gettempdir(), '{}.mp3'.format(content_id)), 'wb') as f:
                             f.write(payload.read())
 
                         log.info('write audio to {}.mp3'.format(content_id))
@@ -344,25 +345,21 @@ class Alexa(object):
     def token(self):
         date_format = "%a %b %d %H:%M:%S %Y"
 
-        if not self._tokens:
-            with open(self._tokens_filename, 'r') as f:
-                self._tokens = json.loads(f.read())
-
-        if 'access_token' in self._tokens:
-            if 'expiry' in self._tokens:
-                expiry = datetime.datetime.strptime(self._tokens['expiry'], date_format)
+        if 'access_token' in self._config:
+            if 'expiry' in self._config:
+                expiry = datetime.datetime.strptime(self._config['expiry'], date_format)
                 # refresh 60 seconds early to avoid chance of using expired access_token
                 if (datetime.datetime.utcnow() - expiry) > datetime.timedelta(seconds=60):
                     log.info("Refreshing access_token")
                 else:
                     log.info("access_token should be OK, expires %s", expiry)
-                    return self._tokens['access_token']
+                    return self._config['access_token']
 
         payload = {
-            'client_id': self._tokens['client_id'],
-            'client_secret': self._tokens['client_secret'],
+            'client_id': self._config['client_id'],
+            'client_secret': self._config['client_secret'],
             'grant_type': 'refresh_token',
-            'refresh_token': self._tokens['refresh_token']
+            'refresh_token': self._config['refresh_token']
         }
 
         conn = hyper.HTTPConnection('api.amazon.com:443', secure=True, force_proto="h2")
@@ -373,9 +370,8 @@ class Alexa(object):
         if r.status == 200:
             tokens = json.loads(r.read().decode('utf-8'))
             expiry_time = datetime.datetime.utcnow() + datetime.timedelta(seconds=tokens['expires_in'])
-            self._tokens['expiry'] = expiry_time.strftime(date_format)
-            with open(self._tokens_filename, 'w') as f:
-                f.write(json.dumps(self._tokens, indent=4))
+            self._config['expiry'] = expiry_time.strftime(date_format)
+            self._config['access_token'] = tokens['access_token']
 
             return tokens['access_token']
         else:
@@ -393,12 +389,31 @@ def main():
     from avs.mic import Mic
     import sys
 
+    logging.basicConfig(level=logging.INFO)
+    configuration_file = os.path.join(os.path.expanduser('~'), '.alexa.json')
+
     if len(sys.argv) < 2:
-        print('Usage: {} tokens.json'.format(sys.argv[0]))
-        sys.exit(1)
+        if not os.path.isfile(configuration_file):
+            print('Usage: {} [configuration.json]'.format(sys.argv[0]))
+            print('\nIf configuration file is not provided, {} will be used'.format(configuration_file))
+            sys.exit(1)
+    else:
+        configuration_file = sys.argv[1]
+
+    with open(configuration_file, 'r') as f:
+        config = json.load(f)
+        require_keys = ['product_id', 'client_id', 'client_secret']
+        for key in require_keys:
+            if not ((key in config) and config[key]):
+                print('{} should include "{}"'.format(configuration_file, key))
+                sys.exit(2)
+
+            if not ('refresh_token' in config) and config['refresh_token']:
+                print('Not "refresh_token" available. you should run `alexa-auth {}` first'.format(configuration_file))
+                sys.exit(3)
 
     audio = Mic()
-    with Alexa(sys.argv[1], audio) as alexa:
+    with Alexa(config, audio) as alexa:
         while True:
             try:
                 try:
