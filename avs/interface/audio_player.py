@@ -1,4 +1,8 @@
 
+import os
+import tempfile
+
+
 class AudioPlayer(object):
     STATES = {'IDLE', 'PLAYING', 'STOPPED', 'PAUSED', 'BUFFER_UNDERRUN', 'FINISHED'}
 
@@ -35,6 +39,14 @@ class AudioPlayer(object):
     # }
     def Play(self, directive):
         behavior = directive['payload']['playBehavior']
+        audio_url = directive['payload']['audioItem']['stream']['url']
+        if audio_url.startswith('cid:'):
+            mp3_file = os.path.join(tempfile.gettempdir(), audio_url[4:] + '.mp3')
+            if os.path.isfile(mp3_file):
+                os.system('mpv "{}"'.format(mp3_file))
+                os.system('rm -rf "{}"'.format(mp3_file))
+        else:
+            os.system('mpv {}'.format(audio_url))
 
 
     def PlaybackStarted(self):
