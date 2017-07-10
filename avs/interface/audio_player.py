@@ -1,6 +1,7 @@
 
 import os
 import tempfile
+from avs.player import Player
 
 
 class AudioPlayer(object):
@@ -8,6 +9,7 @@ class AudioPlayer(object):
 
     def __init__(self, alexa):
         self.alexa = alexa
+        self.player = Player()
 
     # {
     #     "directive": {
@@ -43,11 +45,12 @@ class AudioPlayer(object):
         if audio_url.startswith('cid:'):
             mp3_file = os.path.join(tempfile.gettempdir(), audio_url[4:] + '.mp3')
             if os.path.isfile(mp3_file):
-                os.system('mpv "{}"'.format(mp3_file))
-                os.system('rm -rf "{}"'.format(mp3_file))
+                # os.system('mpv "{}"'.format(mp3_file))
+                # os.system('rm -rf "{}"'.format(mp3_file))
+                self.player.play('file://{}'.format(mp3_file))
         else:
-            os.system('mpv {}'.format(audio_url))
-
+            # os.system('mpv {}'.format(audio_url))
+            self.player.play(audio_url)
 
     def PlaybackStarted(self):
         pass
