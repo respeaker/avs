@@ -5,6 +5,7 @@ import cgi
 import io
 import json
 import uuid
+import requests
 
 try:
     import Queue as queue
@@ -25,6 +26,7 @@ from avs.interface.system import System
 import logging
 import os
 import tempfile
+from avs.config import DEFAULT_CONFIG_FILE
 
 
 log = logging.getLogger(__name__)
@@ -32,6 +34,7 @@ log = logging.getLogger(__name__)
 
 class Alexa(object):
     API_VERSION = 'v20160207'
+    # API_VERSION = 'dcs/avs-compatible-v20160207'
 
     def __init__(self, config, audio):
         self.event_queue = queue.Queue()
@@ -47,15 +50,28 @@ class Alexa(object):
 
         self.audio = audio
 
+        self.requests = requests.Session()
+
         self._config = config
 
+        if ('host_url' not in self._config) or (not self._config['host_url']):
+            self._config['host_url'] = 'avs-alexa-na.amazon.com'
+
+        if self._config['host_url'] == 'dueros-h2.baidu.com':
+            self._config['api'] = 'dcs/avs-compatible-v20160207'
+            self._config['refresh_url'] = 'https://openapi.baidu.com/oauth/2.0/token'
+        else:
+            self._config['api'] = 'v20160207'
+            self._config['refresh_url'] = 'https://api.amazon.com/auth/o2/token'
+
         self._last_activity = None
+        self._ping_time = None
 
     def start(self):
         t = threading.Thread(target=self.loop)
         t.daemon = True
         t.start()
-        self.ready.wait()
+        self.ready.wait(60)
 
     def stop(self):
         self.done.set()
@@ -73,30 +89,30 @@ class Alexa(object):
         self.done.clear()
         self.event_queue.queue.clear()
 
-        conn = hyper.HTTP20Connection(
-            'avs-alexa-na.amazon.com:443', force_proto='h2')
+        # ping every 5 minutes (60 seconds early for latency) to maintain the connection
+        self._ping_time = datetime.datetime.utcnow() + datetime.timedelta(seconds=240)
 
-        downchannel_id = conn.request(
-            'GET',
-            '/{}/directives'.format(self.API_VERSION),
-            headers={'authorization': 'Bearer {}'.format(self.token)}
-        )
+        conn = hyper.HTTP20Connection('{}:443'.format(self._config['host_url']), force_proto='h2')
+
+        headers = {'authorization': 'Bearer {}'.format(self.token)}
+        if 'dueros-device-id' in self._config:
+            headers['dueros-device-id'] = self._config['dueros-device-id']
+
+        downchannel_id = conn.request('GET', '/{}/directives'.format(self._config['api']), headers=headers)
         downchannel_response = conn.get_response(downchannel_id)
         if downchannel_response.status != 200:
-            raise ValueError(
-                "/directive requests returned {}".format(downchannel_response.status))
-        ctype, pdict = cgi.parse_header(
-            downchannel_response.headers['content-type'][0].decode('utf-8'))
+            raise ValueError("/directive requests returned {}".format(downchannel_response.status))
 
+        ctype, pdict = cgi.parse_header(downchannel_response.headers['content-type'][0].decode('utf-8'))
         downchannel_boundary = '--{}'.format(pdict['boundary']).encode('utf-8')
         downchannel = conn.streams[downchannel_id]
+        downchannel_buffer = io.BytesIO()
+        eventchannel_boundary = 'seeed-voice-engine'
 
         self.System.SynchronizeState()
 
         self.ready.set()
 
-        downchannel_buffer = io.BytesIO()
-        boundary = 'this-is-a-boundary'
         while not self.done.is_set():
             # log.info("Waiting for event to send to AVS")
             # log.info("Connection socket can_read %s", conn._sock.can_read)
@@ -123,10 +139,13 @@ class Alexa(object):
             headers = {
                 ':method': 'POST',
                 ':scheme': 'https',
-                ':path': '/{}/events'.format(self.API_VERSION),
+                ':path': '/{}/events'.format(self._config['api']),
                 'authorization': 'Bearer {}'.format(self.token),
-                'content-type': 'multipart/form-data; boundary={}'.format(boundary)
+                'content-type': 'multipart/form-data; boundary={}'.format(eventchannel_boundary)
             }
+            if 'dueros-device-id' in self._config:
+                headers['dueros-device-id'] = self._config['dueros-device-id']
+
             stream_id = conn.putrequest(headers[':method'], headers[':path'])
             default_headers = (':method', ':scheme', ':authority', ':path')
             for name, value in headers.items():
@@ -140,7 +159,7 @@ class Alexa(object):
             }
             log.debug('metadata: {}'.format(json.dumps(metadata, indent=4)))
 
-            json_part = '--{}\r\n'.format(boundary)
+            json_part = '--{}\r\n'.format(eventchannel_boundary)
             json_part += 'Content-Disposition: form-data; name="metadata"\r\n'
             json_part += 'Content-Type: application/json; charset=UTF-8\r\n\r\n'
             json_part += json.dumps(metadata)
@@ -149,7 +168,7 @@ class Alexa(object):
 
             if 'attachment' in event:
                 attachment = event['attachment']
-                attachment_header = '\r\n--{}\r\n'.format(boundary)
+                attachment_header = '\r\n--{}\r\n'.format(eventchannel_boundary)
                 attachment_header += 'Content-Disposition: form-data; name="audio"\r\n'
                 attachment_header += 'Content-Type: application/octet-stream\r\n\r\n'
                 conn.send(attachment_header.encode('utf-8'), final=False, stream_id=stream_id)
@@ -166,7 +185,7 @@ class Alexa(object):
                         framebytes = downchannel._read_one_frame()
                         self._read_response(framebytes, downchannel_boundary, downchannel_buffer)
 
-            end_part = '\r\n--{}--'.format(boundary)
+            end_part = '\r\n--{}--'.format(eventchannel_boundary)
             conn.send(end_part.encode('utf-8'), final=True, stream_id=stream_id)
 
             log.info("wait for response")
@@ -178,7 +197,6 @@ class Alexa(object):
             elif resp.status == 204:
                 pass
             else:
-                log.warning("unexpected status code: %s", resp.status)
                 log.warning(resp.headers)
                 log.warning(resp.read())
 
@@ -321,25 +339,25 @@ class Alexa(object):
             log.exception(e)
 
     def _ping(self, connection):
-        # ping every 5 minutes (30 seconds early for latency) to maintain the connection
-        if datetime.datetime.utcnow() - self._last_activity > datetime.timedelta(seconds=270):
+        if datetime.datetime.utcnow() >= self._ping_time:
             # ping_stream_id = connection.request('GET', '/ping',
             #                                     headers={'authorization': 'Bearer {}'.format(self.token)})
             # resp = connection.get_response(ping_stream_id)
             # if resp.status != 200 and resp.status != 204:
+            #     log.warning(resp.read())
             #     raise ValueError("/ping requests returned {}".format(resp.status))
 
             connection.ping(uuid.uuid4().hex[:8])
 
-            self._last_activity = datetime.datetime.utcnow()
-
-            log.debug('ping at {}'.format(self._last_activity.strftime("%a %b %d %H:%M:%S %Y")))
+            # ping every 5 minutes (60 seconds early for latency) to maintain the connection
+            self._ping_time = datetime.datetime.utcnow() + datetime.timedelta(seconds=240)
+            log.debug('ping at {}'.format(datetime.datetime.utcnow().strftime("%a %b %d %H:%M:%S %Y")))
 
     @property
     def context(self):
         # return [self.SpeechRecognizer.context, self.SpeechSynthesizer.context,
         #                    self.AudioPlayer.context, self.Speaker.context, self.Alerts.context]
-        return [self.SpeechSynthesizer.context, self.Speaker.context]
+        return [self.SpeechSynthesizer.context, self.Speaker.context, self.AudioPlayer.context]
 
     @property
     def token(self):
@@ -352,7 +370,6 @@ class Alexa(object):
                 if (datetime.datetime.utcnow() - expiry) > datetime.timedelta(seconds=60):
                     log.info("Refreshing access_token")
                 else:
-                    log.info("access_token should be OK, expires %s", expiry)
                     return self._config['access_token']
 
         payload = {
@@ -362,20 +379,18 @@ class Alexa(object):
             'refresh_token': self._config['refresh_token']
         }
 
-        conn = hyper.HTTPConnection('api.amazon.com:443', secure=True, force_proto="h2")
-        conn.request("POST", "/auth/o2/token",
-                     headers={'Content-Type': "application/json"},
-                     body=json.dumps(payload).encode('utf-8'))
-        r = conn.get_response()
-        if r.status == 200:
-            tokens = json.loads(r.read().decode('utf-8'))
-            expiry_time = datetime.datetime.utcnow() + datetime.timedelta(seconds=tokens['expires_in'])
-            self._config['expiry'] = expiry_time.strftime(date_format)
-            self._config['access_token'] = tokens['access_token']
-
-            return tokens['access_token']
-        else:
+        r = self.requests.post(self._config['refresh_url'], data=payload)
+        if r.status_code != 200:
+            log.warning(r.text)
             raise ValueError("refresh token request returned {}".format(r.status))
+        config = r.json()
+        self._config['access_token'] = config['access_token']
+
+        expiry_time = datetime.datetime.utcnow() + datetime.timedelta(seconds=config['expires_in'])
+        self._config['expiry'] = expiry_time.strftime(date_format)
+        log.debug(json.dumps(config, indent=4))
+
+        return self._config['access_token']
 
     def __enter__(self):
         self.start()
@@ -390,7 +405,7 @@ def main():
     import sys
 
     logging.basicConfig(level=logging.INFO)
-    configuration_file = os.path.join(os.path.expanduser('~'), '.alexa.json')
+    configuration_file = DEFAULT_CONFIG_FILE
 
     if len(sys.argv) < 2:
         if not os.path.isfile(configuration_file):
@@ -417,7 +432,7 @@ def main():
         while True:
             try:
                 try:
-                    input('press ENTER to talk with alexa')
+                    input('press ENTER to talk\n')
                 except SyntaxError:
                     pass
 
