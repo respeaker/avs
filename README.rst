@@ -2,7 +2,6 @@
 Python Alexa Voice Service App
 ==============================
 
-
 .. image:: https://img.shields.io/pypi/v/avs.svg
         :target: https://pypi.python.org/pypi/avs
 
@@ -13,27 +12,53 @@ Python Alexa Voice Service App
         :target: https://avs.readthedocs.io/en/latest/?badge=latest
         :alt: Documentation Status
 
-.. image:: https://pyup.io/repos/github/respeaker/avs/shield.svg
-     :target: https://pyup.io/repos/github/respeaker/avs
-     :alt: Updates
-
-
-Python implementation of Alexa Voice Service app
-
-
-* Free software: GNU General Public License v3
-* Documentation: https://avs.readthedocs.io.
-
 
 Features
 --------
 
-* TODO
+* Implement Alexa Voice Service API v20160207
+* Support DuerOS AVS compatible service
+
+To do
+-----
+
+* Alerts interface
+* Speaker interface
+* Notifications interface
+
+Usage
+-----
+
+1. `register for an Amazon Developer Account. <https://github.com/alexa/alexa-avs-raspberry-pi#61---register-your-product-and-create-a-security-profile>`_
+
+2. create a file named config.json with your product_id, client_id and client_secret::
+
+    {
+        "product_id": "x",
+        "client_id": "y",
+        "client_secret": "z"
+    }
+
+
+3. run::
+
+    pip install avs
+    alexa-auth config.json  # oauth
+    alexa-tap               # press enter and talk
+
+
+License
+-------
+* Free software: GNU General Public License v3
+
+
+
 
 Credits
----------
+-------
 
-The project is based on `nicholas-gh/python-alexa-client`_.
+This project is based on `nicholas-gh/python-alexa-client`_.
+
 This package was created with Cookiecutter_ and the `audreyr/cookiecutter-pypackage`_ project template.
 
 .. _`nicholas-gh/python-alexa-client`: https://github.com/nicholas-gh/python-alexa-client
