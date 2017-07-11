@@ -16,6 +16,7 @@ class SpeechSynthesizer(object):
 
         self.player = Player()
         self.player.add_callback('eos', self.SpeechFinished)
+        self.player.add_callback('error', self.SpeechFinished)
 
     # {
     #     "directive": {
@@ -44,10 +45,10 @@ class SpeechSynthesizer(object):
                 # os.system('mpv "{}"'.format(mp3_file))
                 # os.system('rm -rf "{}"'.format(mp3_file))
                 self.player.play('file://{}'.format(mp3_file))
-                self.state = 'PLAYING'
                 self.SpeechStarted()
 
     def SpeechStarted(self):
+        self.state = 'PLAYING'
         event = {
             "event": {
                 "header": {
@@ -80,6 +81,11 @@ class SpeechSynthesizer(object):
 
     @property
     def context(self):
+        if self.state != 'PLAYING':
+            offset = 0
+        else:
+            offset = self.player.position * 1000000
+
         return {
                     "header": {
                         "namespace": "SpeechSynthesizer",
@@ -87,7 +93,7 @@ class SpeechSynthesizer(object):
                     },
                     "payload": {
                         "token": self.token,
-                        "offsetInMilliseconds": self.player.position * 1000000,
+                        "offsetInMilliseconds": offset,
                         "playerActivity": self.state
                     }
                 }
