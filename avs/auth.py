@@ -92,12 +92,17 @@ def login(config, output):
 
 
 def setup(config, output):
-    import threading
-    import webbrowser
+    try:
+        import webbrowser
+    except ImportError:
+        print('Go to http://{your device IP}:3000 to start')
+        login(config, output)
+        return
 
+    import threading
     t = threading.Thread(target=login, args=(config, output))
     t.start()
-    print("Go to http://127.0.0.1:3000 to start")
+    print("A web page should is opened. If not, go to http://127.0.0.1:3000 to start")
     webbrowser.open('http://127.0.0.1:3000')
     t.join()
 
