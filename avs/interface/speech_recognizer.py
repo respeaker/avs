@@ -1,3 +1,7 @@
+# -*- coding: utf-8 -*-
+
+"""https://developer.amazon.com/public/solutions/alexa/alexa-voice-service/reference/speechrecognizer"""
+
 import uuid
 from threading import Event
 import logging
@@ -17,6 +21,9 @@ class SpeechRecognizer(object):
         self.done = Event()
 
     def Recognize(self, audio, dialog=None, initiator=None, timeout=12000):
+        if self.alexa.AudioPlayer.state == 'PLAYING':
+            self.alexa.AudioPlayer.pause()
+
         if dialog is None:
             dialog = uuid.uuid4().hex
 
