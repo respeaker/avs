@@ -6,8 +6,6 @@
 
 import unittest
 
-from avs import alexa
-
 
 class TestAlexa(unittest.TestCase):
     """Tests for `avs` package."""
