@@ -38,6 +38,7 @@ setup(
     install_requires=requirements,
     entry_points={
         'console_scripts': [
+            'alexa=avs.main:main',
             'alexa-tap=avs.alexa:main',
             'alexa-auth=avs.auth:main'
         ],
