@@ -47,6 +47,11 @@ Usage
     alexa-tap               # press enter and talk
 
 
+4. If you want to run hands free alexa, install `respeaker python library <https://github.com/respeaker/respeaker_python_library>`_ and run::
+
+    alexa
+    
+
 License
 -------
 * Free software: GNU General Public License v3

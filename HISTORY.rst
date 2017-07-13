@@ -2,6 +2,11 @@
 History
 =======
 
+0.0.4 (2017-07-13)
+------------------
+
+* add hands free alexa util using respeaker python library
+
 0.0.3 (2017-07-11)
 ------------------
 
