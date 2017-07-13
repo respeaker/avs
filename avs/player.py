@@ -2,6 +2,7 @@
 
 """Player using gstreamer."""
 
+import time
 import gi
 gi.require_version('Gst', '1.0')
 from gi.repository import Gst
@@ -45,11 +46,12 @@ class Player(object):
 
     @property
     def duration(self):
-        success, self.duration = self.player.query_duration(Gst.Format.TIME)
+        success, duration = self.player.query_duration(Gst.Format.TIME)
         if not success:
-            return 0
+            time.sleep(0.1)
+            success, duration = self.player.query_duration(Gst.Format.TIME)
 
-        return self.duration / Gst.SECOND
+        return float(duration) / Gst.SECOND
 
     @property
     def position(self):
