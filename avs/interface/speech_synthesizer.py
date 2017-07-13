@@ -1,6 +1,7 @@
 
 import uuid
 import os
+import threading
 import tempfile
 
 from avs.player import Player
@@ -13,6 +14,7 @@ class SpeechSynthesizer(object):
         self.alexa = alexa
         self.token = ''
         self.state = 'FINISHED'
+        self.finished = threading.Event()
 
         self.player = Player()
         self.player.add_callback('eos', self.SpeechFinished)
@@ -42,10 +44,13 @@ class SpeechSynthesizer(object):
         if url.startswith('cid:'):
             mp3_file = os.path.join(tempfile.gettempdir(), url[4:] + '.mp3')
             if os.path.isfile(mp3_file):
+                self.finished.clear()
                 # os.system('mpv "{}"'.format(mp3_file))
                 # os.system('rm -rf "{}"'.format(mp3_file))
                 self.player.play('file://{}'.format(mp3_file))
                 self.SpeechStarted()
+
+                self.finished.wait(timeout=self.player.duration)
 
     def SpeechStarted(self):
         self.state = 'PLAYING'
@@ -64,6 +69,7 @@ class SpeechSynthesizer(object):
         self.alexa.event_queue.put(event)
 
     def SpeechFinished(self):
+        self.finished.set()
         self.state = 'FINISHED'
         event = {
             "event": {
