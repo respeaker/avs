@@ -39,9 +39,21 @@ Usage
         "client_secret": "z"
     }
 
+    For DuerOS, set OAUTH CONFIG URL to `http://127.0.0.1:3000/authresponse` and add `host_url` and `dueros-device-id` to the config.json, for example
+
+    {
+        "host_url": "dueros-h2.baidu.com",
+        "dueros-device-id": "storyteller0001",
+        "product_id": "x",
+        "client_id": "y",
+        "client_secret": "z"
+    }
+
+
 
 3. run::
 
+    sudo apt-get install python-gi python-gst gir1.2-gstreamer-1.0    # if using python3, these packages should be python3-gi, python3-gst and gir1.2-gstreamer-1.0
     pip install avs
     alexa-auth config.json  # oauth
     alexa-tap               # press enter and talk
@@ -50,7 +62,7 @@ Usage
 4. If you want to run hands free alexa, install `respeaker python library <https://github.com/respeaker/respeaker_python_library>`_ and run::
 
     alexa
-    
+
 
 License
 -------
