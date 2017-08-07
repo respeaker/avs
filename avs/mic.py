@@ -6,27 +6,44 @@ try:
     import Queue as queue
 except ImportError:
     import queue
-import threading
+
 import logging
 
-
-log = logging.getLogger(__name__)
+logger = logging.getLogger(__file__)
 
 
 class Audio(object):
 
-    def __init__(self, rate=16000, channels=1, chunk_size=None):
-        self.channels = channels
+    def __init__(self, rate=16000, channels=None, device_index=None):
+        self.channels = channels if channels else 1
         self.sample_rate = rate
-        self.chunk_size = chunk_size if chunk_size else rate / 100
+
+        # always 10 ms audio chunk
+        self.chunk_size = rate / 100
 
         self.pyaudio_instance = pyaudio.PyAudio()
         self.queue = queue.Queue()
-        self.quit_event = threading.Event()
+
+        if device_index is None:
+            if channels:
+                for i in range(self.pyaudio_instance.get_device_count()):
+                    dev = self.pyaudio_instance.get_device_info_by_index(i)
+                    name = dev['name'].encode('utf-8')
+                    logger.info('{}:{} with {} input channels'.format(i, name, dev['maxInputChannels']))
+                    if dev['maxInputChannels'] == channels:
+                        logger.info('Use {}'.format(name))
+                        device_index = i
+                        break
+            else:
+                device_index = self.pyaudio_instance.get_default_input_device_info()['index']
+
+            if device_index is None:
+                raise Exception('Can not find an input device with {} channel(s)'.format(channels))
 
         self.stream = self.pyaudio_instance.open(
             start=False,
             format=pyaudio.paInt16,
+            input_device_index=device_index,
             channels=self.channels,
             rate=int(self.sample_rate),
             frames_per_buffer=int(self.chunk_size),
