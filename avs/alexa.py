@@ -85,7 +85,7 @@ class Alexa(object):
             self._config['api'] = 'v20160207'
             self._config['refresh_url'] = 'https://api.amazon.com/auth/o2/token'
 
-        self._last_activity = None
+        self.last_activity = datetime.datetime.utcnow()
         self._ping_time = None
 
     def start(self):
@@ -154,8 +154,6 @@ class Alexa(object):
                 self._ping(conn)
                 continue
 
-            self._last_activity = datetime.datetime.utcnow()
-
             headers = {
                 ':method': 'POST',
                 ':scheme': 'https',
@@ -203,6 +201,8 @@ class Alexa(object):
                     while downchannel.data:
                         framebytes = downchannel._read_one_frame()
                         self._read_response(framebytes, downchannel_boundary, downchannel_buffer)
+
+                self.last_activity = datetime.datetime.utcnow()
 
             end_part = '\r\n--{}--'.format(eventchannel_boundary)
             conn.send(end_part.encode('utf-8'), final=True, stream_id=stream_id)

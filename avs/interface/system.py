@@ -1,41 +1,40 @@
 import uuid
+import datetime
 
 
 class System(object):
-
     def __init__(self, alexa):
         self.alexa = alexa
 
     def SynchronizeState(self):
         event = {
-            "event": {
-                "header": {
-                    "namespace": "System",
-                    "name": "SynchronizeState",
-                    "messageId": uuid.uuid4().hex
-                },
-                "payload": {
-                }
+            "header": {
+                "namespace": "System",
+                "name": "SynchronizeState",
+                "messageId": uuid.uuid4().hex
+            },
+            "payload": {
             }
         }
 
-        self.alexa.event_queue.put(event)
+        self.alexa.send_event(event)
 
     def UserInactivityReport(self):
-        event = {
-            "event": {
-                "header": {
-                    "namespace": "System",
-                    "name": "UserInactivityReport",
-                    "messageId": uuid.uuid4().hex
-                },
-                "payload": {
-                    "inactiveTimeInSeconds": 0
-                }
+        inactive_time = datetime.datetime.utcnow() - self.alexa.last_activity
 
+        event = {
+            "header": {
+                "namespace": "System",
+                "name": "UserInactivityReport",
+                "messageId": uuid.uuid4().hex
+            },
+            "payload": {
+                "inactiveTimeInSeconds": inactive_time.seconds
             }
 
         }
+
+        self.alexa.send_event(event)
 
     # {
     #     "directive": {
@@ -49,7 +48,7 @@ class System(object):
     #     }
     # }
     def ResetUserInactivity(self, directive):
-        pass
+        self.alexa.last_activity = datetime.datetime.utcnow()
 
     # {
     #     "directive": {
@@ -68,22 +67,17 @@ class System(object):
 
     def ExceptionEncountered(self):
         event = {
-            "event": {
-                "header": {
-                    "namespace": "System",
-                    "name": "ExceptionEncountered",
-                    "messageId": "{{STRING}}"
-                },
-                "payload": {
-                    "unparsedDirective": "{{STRING}}",
-                    "error": {
-                        "type": "{{STRING}}",
-                        "message": "{{STRING}}"
-                    }
+            "header": {
+                "namespace": "System",
+                "name": "ExceptionEncountered",
+                "messageId": "{{STRING}}"
+            },
+            "payload": {
+                "unparsedDirective": "{{STRING}}",
+                "error": {
+                    "type": "{{STRING}}",
+                    "message": "{{STRING}}"
                 }
             }
         }
-
-    @property
-    def context(self):
-        pass
+        self.alexa.send_event(event)
