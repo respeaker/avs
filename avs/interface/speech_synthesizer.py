@@ -54,7 +54,6 @@ class SpeechSynthesizer(object):
             if os.path.isfile(mp3_file):
                 self.finished.clear()
                 # os.system('mpv "{}"'.format(mp3_file))
-                # os.system('rm -rf "{}"'.format(mp3_file))
                 self.player.play('file://{}'.format(mp3_file))
                 self.SpeechStarted()
 
@@ -62,6 +61,8 @@ class SpeechSynthesizer(object):
 
                 # will be set at SpeechFinished() if the player reaches the End Of Stream or gets a error
                 self.finished.wait()
+
+                os.system('rm -rf "{}"'.format(mp3_file))
 
     def SpeechStarted(self):
         self.state = 'PLAYING'
