@@ -1,42 +1,88 @@
+# -*- coding: utf-8 -*-
 
+"""
+Hands-free alexa with respeaker using pocketsphinx to search keyword
+
+It depends on respeaker python library (https://github.com/respeaker/respeaker_python_library)
+"""
 
 import os
+import sys
 import json
+import time
+import threading
+try:
+    import Queue as queue
+except ImportError:
+    import queue
 
 from avs.alexa import Alexa
+from avs.mic import Audio
 from avs.config import DEFAULT_CONFIG_FILE
 
 import logging
 
+logger = logging.getLogger(__file__)
 
-class Audio(object):
+
+class KWS(object):
     def __init__(self):
-        from respeaker import Microphone
+        self.queue = queue.Queue()
 
-        self.mic = Microphone()
+        self.sinks = []
+        self._callback = None
 
-    def wakeup(self):
-        return self.mic.wakeup('alexa')
+        self.done = False
+
+    def put(self, data):
+        self.queue.put(data)
 
     def start(self):
-        pass
-
-    def __iter__(self):
-        return self.mic.listen()
+        self.done = False
+        thread = threading.Thread(target=self.run)
+        thread.daemon = True
+        thread.start()
 
     def stop(self):
-        pass
+        self.done = True
 
-    def __enter__(self):
-        return self
+    def link(self, sink):
+        if hasattr(sink, 'put') and callable(sink.put):
+            self.sinks.append(sink)
+        else:
+            raise ValueError('Not implement put() method')
 
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        pass
+    def unlink(self, sink):
+        self.sinks.remove(sink)
+
+    def set_callback(self, callback):
+        self._callback = callback
+
+    def run(self):
+        from respeaker.microphone import Microphone
+
+        decoder = Microphone.create_decoder()
+        decoder.start_utt()
+
+        while not self.done:
+            chunk = self.queue.get()
+            decoder.process_raw(chunk, False, False)
+            hypothesis = decoder.hyp()
+            if hypothesis:
+                keyword = hypothesis.hypstr
+                logger.info('Detected {}'.format(keyword))
+
+                if callable(self._callback):
+                    self._callback(keyword)
+
+                decoder.end_utt()
+                decoder.start_utt()
+
+            for sink in self.sinks:
+                sink.put(chunk)
 
 
 def main():
-    import sys
-
     logging.basicConfig(level=logging.DEBUG)
     configuration_file = DEFAULT_CONFIG_FILE
 
@@ -61,10 +107,31 @@ def main():
                 sys.exit(3)
 
     audio = Audio()
-    with Alexa(config, audio) as alexa:
-        while True:
-            if audio.wakeup():
-                alexa.SpeechRecognizer.Recognize(audio).wait(60)
+    kws = KWS()
+    alexa = Alexa(config)
+
+    audio.link(kws)
+    kws.link(alexa)
+
+    def wakeup(keyword):
+        if keyword.find('alexa') >= 0:
+            alexa.listen()
+
+    kws.set_callback(wakeup)
+
+    alexa.start()
+    kws.start()
+    audio.start()
+
+    while True:
+        try:
+            time.sleep(1)
+        except KeyboardInterrupt:
+            break
+
+    alexa.stop()
+    kws.stop()
+    audio.stop()
 
 
 if __name__ == '__main__':

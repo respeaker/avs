@@ -3,8 +3,9 @@
 """https://developer.amazon.com/public/solutions/alexa/alexa-voice-service/reference/audioplayer"""
 
 import os
-import uuid
 import tempfile
+import uuid
+
 from avs.player import Player
 
 
@@ -68,35 +69,31 @@ class AudioPlayer(object):
         self.state = 'PLAYING'
 
         event = {
-                    "event": {
-                        "header": {
-                            "namespace": "AudioPlayer",
-                            "name": "PlaybackStarted",
-                            "messageId": uuid.uuid4().hex
-                        },
-                        "payload": {
-                            "token": self.token,
-                            "offsetInMilliseconds": self.player.position * 1000000
-                        }
-                    }
-                }
-        self.alexa.event_queue.put(event)
+            "header": {
+                "namespace": "AudioPlayer",
+                "name": "PlaybackStarted",
+                "messageId": uuid.uuid4().hex
+            },
+            "payload": {
+                "token": self.token,
+                "offsetInMilliseconds": self.player.position
+            }
+        }
+        self.alexa.send_event(event)
 
     def PlaybackNearlyFinished(self):
         event = {
-                    "event": {
-                        "header": {
-                            "namespace": "AudioPlayer",
-                            "name": "PlaybackNearlyFinished",
-                            "messageId": uuid.uuid4().hex
-                        },
-                        "payload": {
-                            "token": self.token,
-                            "offsetInMilliseconds": self.player.position * 1000000
-                        }
-                    }
-                }
-        self.alexa.event_queue.put(event)
+            "header": {
+                "namespace": "AudioPlayer",
+                "name": "PlaybackNearlyFinished",
+                "messageId": uuid.uuid4().hex
+            },
+            "payload": {
+                "token": self.token,
+                "offsetInMilliseconds": self.player.position
+            }
+        }
+        self.alexa.send_event(event)
 
     def ProgressReportDelayElapsed(self):
         pass
@@ -114,19 +111,17 @@ class AudioPlayer(object):
         self.state = 'FINISHED'
 
         event = {
-                    "event": {
-                        "header": {
-                            "namespace": "AudioPlayer",
-                            "name": "PlaybackFinished",
-                            "messageId": uuid.uuid4().hex
-                        },
-                        "payload": {
-                            "token": self.token,
-                            "offsetInMilliseconds": self.player.position * 1000000
-                        }
-                    }
-                }
-        self.alexa.event_queue.put(event)
+            "header": {
+                "namespace": "AudioPlayer",
+                "name": "PlaybackFinished",
+                "messageId": uuid.uuid4().hex
+            },
+            "payload": {
+                "token": self.token,
+                "offsetInMilliseconds": self.player.position
+            }
+        }
+        self.alexa.send_event(event)
 
     def PlaybackFailed(self):
         self.state = 'STOPPED'
@@ -150,19 +145,17 @@ class AudioPlayer(object):
     def PlaybackStopped(self):
         self.state = 'STOPPED'
         event = {
-                    "event": {
-                        "header": {
-                            "namespace": "AudioPlayer",
-                            "name": "PlaybackStopped",
-                            "messageId": uuid.uuid4().hex
-                        },
-                        "payload": {
-                            "token": self.token,
-                            "offsetInMilliseconds": self.player.position * 1000000
-                        }
-                    }
-                }
-        self.alexa.event_queue.put(event)
+            "header": {
+                "namespace": "AudioPlayer",
+                "name": "PlaybackStopped",
+                "messageId": uuid.uuid4().hex
+            },
+            "payload": {
+                "token": self.token,
+                "offsetInMilliseconds": self.player.position
+            }
+        }
+        self.alexa.send_event(event)
 
     def pause(self):
         self.player.pause()
@@ -171,19 +164,17 @@ class AudioPlayer(object):
     def PlaybackPaused(self):
         self.state = 'PAUSED'
         event = {
-                    "event": {
-                        "header": {
-                            "namespace": "AudioPlayer",
-                            "name": "PlaybackPaused",
-                            "messageId": uuid.uuid4().hex
-                        },
-                        "payload": {
-                            "token": self.token,
-                            "offsetInMilliseconds": self.player.position * 1000000
-                        }
-                    }
-                }
-        self.alexa.event_queue.put(event)
+            "header": {
+                "namespace": "AudioPlayer",
+                "name": "PlaybackPaused",
+                "messageId": uuid.uuid4().hex
+            },
+            "payload": {
+                "token": self.token,
+                "offsetInMilliseconds": self.player.position
+            }
+        }
+        self.alexa.send_event(event)
 
     def resume(self):
         self.player.resume()
@@ -192,19 +183,17 @@ class AudioPlayer(object):
     def PlaybackResumed(self):
         self.state = 'PLAYING'
         event = {
-                    "event": {
-                        "header": {
-                            "namespace": "AudioPlayer",
-                            "name": "PlaybackResumed",
-                            "messageId": uuid.uuid4().hex
-                        },
-                        "payload": {
-                            "token": self.token,
-                            "offsetInMilliseconds": self.player.position * 1000000
-                        }
-                    }
-                }
-        self.alexa.event_queue.put(event)
+            "header": {
+                "namespace": "AudioPlayer",
+                "name": "PlaybackResumed",
+                "messageId": uuid.uuid4().hex
+            },
+            "payload": {
+                "token": self.token,
+                "offsetInMilliseconds": self.player.position
+            }
+        }
+        self.alexa.send_event(event)
 
     # {
     #     "directive": {
@@ -227,19 +216,16 @@ class AudioPlayer(object):
         elif behavior == 'CLEAR_ENQUEUED':
             pass
 
-
     def PlaybackQueueCleared(self):
         event = {
-                    "event": {
-                        "header": {
-                            "namespace": "AudioPlayer",
-                            "name": "PlaybackQueueCleared",
-                            "messageId": uuid.uuid4().hex
-                        },
-                        "payload": {}
-                    }
-                }
-        self.alexa.event_queue.put(event)
+            "header": {
+                "namespace": "AudioPlayer",
+                "name": "PlaybackQueueCleared",
+                "messageId": uuid.uuid4().hex
+            },
+            "payload": {}
+        }
+        self.alexa.send_event(event)
 
     def StreamMetadataExtracted(self):
         pass
@@ -249,16 +235,16 @@ class AudioPlayer(object):
         if self.state != 'PLAYING':
             offset = 0
         else:
-            offset = self.player.position * 1000000
+            offset = self.player.position
 
         return {
-                    "header": {
-                        "namespace": "AudioPlayer",
-                        "name": "PlaybackState"
-                    },
-                    "payload": {
-                        "token": self.token,
-                        "offsetInMilliseconds": offset,
-                        "playerActivity": self.state
-                    }
-                }
+            "header": {
+                "namespace": "AudioPlayer",
+                "name": "PlaybackState"
+            },
+            "payload": {
+                "token": self.token,
+                "offsetInMilliseconds": offset,
+                "playerActivity": self.state
+            }
+        }

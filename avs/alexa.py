@@ -4,6 +4,7 @@
 import cgi
 import io
 import json
+import time
 import uuid
 import requests
 
@@ -34,9 +35,8 @@ log = logging.getLogger(__name__)
 
 class Alexa(object):
     API_VERSION = 'v20160207'
-    # API_VERSION = 'dcs/avs-compatible-v20160207'
 
-    def __init__(self, config, audio):
+    def __init__(self, config):
         self.event_queue = queue.Queue()
         self.SpeechRecognizer = SpeechRecognizer(self)
         self.SpeechSynthesizer = SpeechSynthesizer(self)
@@ -45,10 +45,12 @@ class Alexa(object):
         self.Alerts = Alerts(self)
         self.System = System(self)
 
-        self.ready = threading.Event()
-        self.done = threading.Event()
+        # handle audio to speech recognizer
+        self.put = self.SpeechRecognizer.put
 
-        self.audio = audio
+        # listen() will trigger SpeechRecognizer's Recognize event
+        self.listen = self.SpeechRecognizer.Recognize
+        self.done = threading.Event()
 
         self.requests = requests.Session()
 
@@ -68,30 +70,25 @@ class Alexa(object):
         self._ping_time = None
 
     def start(self):
-        t = threading.Thread(target=self.loop)
+        t = threading.Thread(target=self.run)
         t.daemon = True
         t.start()
-        self.ready.wait(60)
 
     def stop(self):
         self.done.set()
-        self.ready.clear()
 
-    def loop(self):
+    def send_event(self, event, listener=None, attachment=None):
+        self.event_queue.put((event, listener, attachment))
+
+    def run(self):
         while not self.done.is_set():
             try:
-                self._loop()
+                self._run()
             except Exception as e:
                 log.exception(e)
-                log.info('reconnect...')
+                raise
 
-    def _loop(self):
-        self.done.clear()
-        self.event_queue.queue.clear()
-
-        # ping every 5 minutes (60 seconds early for latency) to maintain the connection
-        self._ping_time = datetime.datetime.utcnow() + datetime.timedelta(seconds=240)
-
+    def _run(self):
         conn = hyper.HTTP20Connection('{}:443'.format(self._config['host_url']), force_proto='h2')
 
         headers = {'authorization': 'Bearer {}'.format(self.token)}
@@ -109,15 +106,19 @@ class Alexa(object):
         downchannel_buffer = io.BytesIO()
         eventchannel_boundary = 'seeed-voice-engine'
 
+        # ping every 5 minutes (60 seconds early for latency) to maintain the connection
+        self._ping_time = datetime.datetime.utcnow() + datetime.timedelta(seconds=240)
+
+        self.event_queue.queue.clear()
+
         self.System.SynchronizeState()
 
-        self.ready.set()
-
+        self.done.clear()
         while not self.done.is_set():
             # log.info("Waiting for event to send to AVS")
             # log.info("Connection socket can_read %s", conn._sock.can_read)
             try:
-                event = self.event_queue.get(timeout=0.25)
+                event, listener, attachment = self.event_queue.get(timeout=0.25)
             except queue.Empty:
                 event = None
 
@@ -155,7 +156,7 @@ class Alexa(object):
 
             metadata = {
                 'context': self.context,
-                'event': event['event']
+                'event': event
             }
             log.debug('metadata: {}'.format(json.dumps(metadata, indent=4)))
 
@@ -166,8 +167,7 @@ class Alexa(object):
 
             conn.send(json_part.encode('utf-8'), final=False, stream_id=stream_id)
 
-            if 'attachment' in event:
-                attachment = event['attachment']
+            if attachment:
                 attachment_header = '\r\n--{}\r\n'.format(eventchannel_boundary)
                 attachment_header += 'Content-Disposition: form-data; name="audio"\r\n'
                 attachment_header += 'Content-Type: application/octet-stream\r\n\r\n'
@@ -199,6 +199,9 @@ class Alexa(object):
             else:
                 log.warning(resp.headers)
                 log.warning(resp.read())
+
+            if listener and callable(listener):
+                listener()
 
     def _read_response(self, response, boundary=None, buffer=None):
         if boundary:
@@ -349,9 +352,10 @@ class Alexa(object):
 
             connection.ping(uuid.uuid4().hex[:8])
 
+            log.debug('ping at {}'.format(datetime.datetime.utcnow().strftime("%a %b %d %H:%M:%S %Y")))
+
             # ping every 5 minutes (60 seconds early for latency) to maintain the connection
             self._ping_time = datetime.datetime.utcnow() + datetime.timedelta(seconds=240)
-            log.debug('ping at {}'.format(datetime.datetime.utcnow().strftime("%a %b %d %H:%M:%S %Y")))
 
     @property
     def context(self):
@@ -384,11 +388,12 @@ class Alexa(object):
             log.warning(r.text)
             raise ValueError("refresh token request returned {}".format(r.status))
         config = r.json()
+        print(r.text)
         self._config['access_token'] = config['access_token']
 
         expiry_time = datetime.datetime.utcnow() + datetime.timedelta(seconds=config['expires_in'])
         self._config['expiry'] = expiry_time.strftime(date_format)
-        log.debug(json.dumps(config, indent=4))
+        log.debug(json.dumps(self._config, indent=4))
 
         return self._config['access_token']
 
@@ -401,10 +406,10 @@ class Alexa(object):
 
 
 def main():
-    from avs.mic import Mic
     import sys
+    from avs.mic import Audio
 
-    logging.basicConfig(level=logging.INFO)
+    logging.basicConfig(level=logging.DEBUG)
     configuration_file = DEFAULT_CONFIG_FILE
 
     if len(sys.argv) < 2:
@@ -427,18 +432,24 @@ def main():
                 print('Not "refresh_token" available. you should run `alexa-auth {}` first'.format(configuration_file))
                 sys.exit(3)
 
-    audio = Mic()
-    with Alexa(config, audio) as alexa:
-        while True:
-            try:
-                try:
-                    input('press ENTER to talk\n')
-                except SyntaxError:
-                    pass
+    audio = Audio()
+    alexa = Alexa(config)
 
-                alexa.SpeechRecognizer.Recognize(audio).wait(20)
-            except KeyboardInterrupt:
-                break
+    audio.link(alexa)
+
+    alexa.start()
+    audio.start()
+
+    while True:
+        try:
+            try:
+                input('press ENTER to talk\n')
+            except SyntaxError:
+                pass
+
+            alexa.listen()
+        except KeyboardInterrupt:
+            break
 
 
 if __name__ == '__main__':

@@ -1,8 +1,7 @@
-
-import uuid
 import os
-import threading
 import tempfile
+import threading
+import uuid
 
 from avs.player import Player
 
@@ -19,6 +18,11 @@ class SpeechSynthesizer(object):
         self.player = Player()
         self.player.add_callback('eos', self.SpeechFinished)
         self.player.add_callback('error', self.SpeechFinished)
+
+    def stop(self):
+        self.finished.set()
+        self.player.stop()
+        self.state = 'FINISHED'
 
     # {
     #     "directive": {
@@ -39,6 +43,10 @@ class SpeechSynthesizer(object):
     # Content-ID: {{Audio Item CID}}
     # {{BINARY AUDIO ATTACHMENT}}
     def Speak(self, directive):
+        dialog_request_id = directive['header']['dialogRequestId']
+        if self.alexa.SpeechRecognizer.dialog_request_id != dialog_request_id:
+            return
+
         self.token = directive['payload']['token']
         url = directive['payload']['url']
         if url.startswith('cid:'):
@@ -50,57 +58,49 @@ class SpeechSynthesizer(object):
                 self.player.play('file://{}'.format(mp3_file))
                 self.SpeechStarted()
 
-                self.finished.wait(timeout=self.player.duration)
+                self.finished.wait()
 
     def SpeechStarted(self):
         self.state = 'PLAYING'
         event = {
-            "event": {
-                "header": {
-                    "namespace": "SpeechSynthesizer",
-                    "name": "SpeechStarted",
-                    "messageId": uuid.uuid4().hex
-                },
-                "payload": {
-                    "token": self.token
-                }
+            "header": {
+                "namespace": "SpeechSynthesizer",
+                "name": "SpeechStarted",
+                "messageId": uuid.uuid4().hex
+            },
+            "payload": {
+                "token": self.token
             }
         }
-        self.alexa.event_queue.put(event)
+        self.alexa.send_event(event)
 
     def SpeechFinished(self):
         self.finished.set()
         self.state = 'FINISHED'
         event = {
-            "event": {
-                "header": {
-                    "namespace": "SpeechSynthesizer",
-                    "name": "SpeechFinished",
-                    "messageId": uuid.uuid4().hex
-                },
-                "payload": {
-                    "token": self.token
-                }
+            "header": {
+                "namespace": "SpeechSynthesizer",
+                "name": "SpeechFinished",
+                "messageId": uuid.uuid4().hex
+            },
+            "payload": {
+                "token": self.token
             }
         }
-        self.alexa.event_queue.put(event)
+        self.alexa.send_event(event)
 
     @property
     def context(self):
-        if self.state != 'PLAYING':
-            offset = 0
-        else:
-            offset = self.player.position * 1000000
+        offset = self.player.position if self.state == 'PLAYING' else 0
 
         return {
-                    "header": {
-                        "namespace": "SpeechSynthesizer",
-                        "name": "SpeechState"
-                    },
-                    "payload": {
-                        "token": self.token,
-                        "offsetInMilliseconds": offset,
-                        "playerActivity": self.state
-                    }
-                }
-
+            "header": {
+                "namespace": "SpeechSynthesizer",
+                "name": "SpeechState"
+            },
+            "payload": {
+                "token": self.token,
+                "offsetInMilliseconds": offset,
+                "playerActivity": self.state
+            }
+        }

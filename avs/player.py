@@ -47,19 +47,16 @@ class Player(object):
     @property
     def duration(self):
         success, duration = self.player.query_duration(Gst.Format.TIME)
-        if not success:
-            time.sleep(0.1)
-            success, duration = self.player.query_duration(Gst.Format.TIME)
-
-        return float(duration) / Gst.SECOND
+        if success:
+            return int(duration / Gst.MSECOND)
 
     @property
     def position(self):
         success, position = self.player.query_position(Gst.Format.TIME)
         if not success:
-            return 0
+            position = 0
 
-        return float(position) / Gst.SECOND
+        return int(position / Gst.MSECOND)
 
     @property
     def state(self):
@@ -69,6 +66,6 @@ class Player(object):
         # GST_STATE_PAUSED              the element is PAUSED, it is ready to accept and process data.
         #                               Sink elements however only accept one buffer and then block.
         # GST_STATE_PLAYING             the element is PLAYING, the GstClock is running and the data is flowing.
-        _, state, _ = self.player.get_state(60 * Gst.MSECOND)
+        _, state, _ = self.player.get_state(Gst.SECOND)
         return 'FINISHED' if state != Gst.State.PLAYING else 'PLAYING'
 

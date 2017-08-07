@@ -2,9 +2,14 @@
 
 """https://developer.amazon.com/public/solutions/alexa/alexa-voice-service/reference/speechrecognizer"""
 
+import logging
 import uuid
 from threading import Event
-import logging
+
+try:
+    import Queue as queue
+except ImportError:
+    import queue
 
 log = logging.getLogger('SpeechRecognizer')
 
@@ -18,53 +23,79 @@ class SpeechRecognizer(object):
     def __init__(self, alexa):
         self.alexa = alexa
         self.profile = 'NEAR_FIELD'
-        self.done = Event()
 
-    def Recognize(self, audio, dialog=None, initiator=None, timeout=12000):
-        if self.alexa.AudioPlayer.state == 'PLAYING':
+        self.dialog_request_id = ''
+
+        self.listening = False
+        self.audio_queue = queue.Queue()
+
+    def put(self, audio):
+        """
+        Put audio into queue when listening
+        :param audio: S16_LE format, sample rate 16000 bps audio data
+        :return: None
+        """
+        if self.listening:
+            self.audio_queue.put(audio)
+
+    def Recognize(self, dialog=None, initiator=None, timeout=10000):
+        """
+        recognize
+        :param dialog:
+        :param initiator:
+        :param timeout:
+        :return:
+        """
+
+        if self.listening:
+            return
+
+        self.audio_queue.queue.clear()
+        self.listening = True
+
+        def on_finished():
+            if self.alexa.AudioPlayer.state == 'PAUSED':
+                self.alexa.AudioPlayer.resume()
+
+        # Stop playing if Alexa is speaking or AudioPlayer is playing
+        if self.alexa.SpeechSynthesizer.state == 'PLAYING':
+            self.alexa.SpeechSynthesizer.stop()
+        elif self.alexa.AudioPlayer.state == 'PLAYING':
             self.alexa.AudioPlayer.pause()
 
-        if dialog is None:
-            dialog = uuid.uuid4().hex
+        self.dialog_request_id = dialog if dialog else uuid.uuid4().hex
 
         if initiator is None:
             initiator = self.TAP
 
         event = {
-            "event": {
-                "header": {
-                    "namespace": "SpeechRecognizer",
-                    "name": "Recognize",
-                    "messageId": uuid.uuid4().hex,
-                    "dialogRequestId": dialog
-                },
-                "payload": {
-                    "profile": self.profile,
-                    "format": "AUDIO_L16_RATE_16000_CHANNELS_1",
-                    'initiator': initiator
-                }
+            "header": {
+                "namespace": "SpeechRecognizer",
+                "name": "Recognize",
+                "messageId": uuid.uuid4().hex,
+                "dialogRequestId": self.dialog_request_id
+            },
+            "payload": {
+                "profile": self.profile,
+                "format": "AUDIO_L16_RATE_16000_CHANNELS_1",
+                'initiator': initiator
             }
         }
 
-        audio.start()
-        self.done.clear()
-
         def gen():
             time_elapsed = 0
-            for chunk in audio:
-                if self.done.is_set() or time_elapsed >= timeout:
-                    log.info('stop recording')
+            while self.listening or time_elapsed >= timeout:
+                try:
+                    chunk = self.audio_queue.get(timeout=1.0)
+                except queue.Empty:
                     break
+
                 yield chunk
                 time_elapsed += 10  # 10 ms chunk
 
-            audio.stop()
-            self.done.set()
+            self.listening = False
 
-        event['attachment'] = gen()
-        self.alexa.event_queue.put(event)
-
-        return self.done
+        self.alexa.send_event(event, listener=on_finished, attachment=gen())
 
     # {
     #   "directive": {
@@ -79,7 +110,7 @@ class SpeechRecognizer(object):
     #     }
     # }
     def StopCapture(self, directive):
-        self.done.set()
+        self.listening = False
         log.info('StopCapture')
 
     # {
@@ -104,20 +135,18 @@ class SpeechRecognizer(object):
         if 'initiator' in directive['payload']:
             initiator = directive['payload']['initiator']
 
-        self.Recognize(self.alexa.audio, dialog=dialog, initiator=initiator, timeout=timeout)
+        self.Recognize(dialog=dialog, initiator=initiator, timeout=timeout)
 
     def ExpectSpeechTimedOut(self):
         event = {
-            "event": {
-                "header": {
-                    "namespace": "SpeechRecognizer",
-                    "name": "ExpectSpeechTimedOut",
-                    "messageId": uuid.uuid4().hex,
-                },
-                "payload": {}
-            }
+            "header": {
+                "namespace": "SpeechRecognizer",
+                "name": "ExpectSpeechTimedOut",
+                "messageId": uuid.uuid4().hex,
+            },
+            "payload": {}
         }
-        self.alexa.event_queue.put(event)
+        self.alexa.send_event(event)
 
     @property
     def context(self):

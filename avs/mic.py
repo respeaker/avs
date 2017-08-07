@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 
 
 import pyaudio
@@ -12,10 +13,10 @@ import logging
 log = logging.getLogger(__name__)
 
 
-class Mic(object):
+class Audio(object):
 
-    def __init__(self, rate=16000, chunk_size=None):
-        self.channels = 1
+    def __init__(self, rate=16000, channels=1, chunk_size=None):
+        self.channels = channels
         self.sample_rate = rate
         self.chunk_size = chunk_size if chunk_size else rate / 100
 
@@ -33,71 +34,26 @@ class Mic(object):
             input=True
         )
 
+        self.sinks = []
+
     def _callback(self, in_data, frame_count, time_info, status):
-        self.queue.put(in_data)
+        for sink in self.sinks:
+            sink.put(in_data)
         return None, pyaudio.paContinue
 
     def start(self):
-        if self.stream.is_stopped():
-            self.queue.queue.clear()
-            self.stream.start_stream()
-            log.info('start recording')
-        else:
-            log.info('already started')
+        self.stream.start_stream()
 
     def stop(self):
-        if not self.stream.is_stopped():
-            self.quit_event.set()
-            self.stream.stop_stream()
-            self.queue.put('')
-            log.info('stop recording')
+        self.stream.stop_stream()
+
+    def link(self, sink):
+        if hasattr(sink, 'put') and callable(sink.put):
+            self.sinks.append(sink)
         else:
-            log.info('already stopped')
+            raise ValueError('Not implement put() method')
 
-    def read_chunked(self):
-        self.quit_event.clear()
-        while not self.quit_event.is_set():
-            try:
-                frames = self.queue.get(timeout=0.5)
-            except queue.Empty:
-                log.debug('timeout')
-                break
-
-            if not frames:
-                log.debug('done')
-                break
-
-            yield frames
-
-    def __enter__(self):
-        self.start()
-        return self
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        self.stop()
-
-    def __iter__(self):
-        self.start()
-        return self.read_chunked()
+    def unlink(self, sink):
+        self.sinks.remove(sink)
 
 
-def main():
-    import signal
-
-    is_quit = threading.Event()
-
-    def signal_handler(sig, num):
-        is_quit.set()
-        print('Quit')
-
-    signal.signal(signal.SIGINT, signal_handler)
-
-    with Mic() as mic:
-        for chunk in mic:
-            pass
-
-            if is_quit.is_set():
-                break
-
-if __name__ == '__main__':
-    main()
