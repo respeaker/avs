@@ -4,14 +4,13 @@
 
 import logging
 import uuid
-from threading import Event
 
 try:
     import Queue as queue
 except ImportError:
     import queue
 
-log = logging.getLogger('SpeechRecognizer')
+logger = logging.getLogger('SpeechRecognizer')
 
 
 class SpeechRecognizer(object):
@@ -53,7 +52,11 @@ class SpeechRecognizer(object):
         self.audio_queue.queue.clear()
         self.listening = True
 
+        self.alexa.state_listener.on_listening()
+
         def on_finished():
+            self.alexa.state_listener.on_finished()
+
             if self.alexa.AudioPlayer.state == 'PAUSED':
                 self.alexa.AudioPlayer.resume()
 
@@ -65,6 +68,7 @@ class SpeechRecognizer(object):
 
         self.dialog_request_id = dialog if dialog else uuid.uuid4().hex
 
+        # TODO: set initiator properly
         if initiator is None:
             initiator = self.TAP
 
@@ -94,6 +98,7 @@ class SpeechRecognizer(object):
                 time_elapsed += 10  # 10 ms chunk
 
             self.listening = False
+            self.alexa.state_listener.on_thinking()
 
         self.alexa.send_event(event, listener=on_finished, attachment=gen())
 
@@ -111,7 +116,7 @@ class SpeechRecognizer(object):
     # }
     def StopCapture(self, directive):
         self.listening = False
-        log.info('StopCapture')
+        logger.info('StopCapture')
 
     # {
     #   "directive": {

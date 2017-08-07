@@ -58,6 +58,9 @@ class SpeechSynthesizer(object):
                 self.player.play('file://{}'.format(mp3_file))
                 self.SpeechStarted()
 
+                self.alexa.state_listener.on_speaking()
+
+                # will be set at SpeechFinished() if the player reaches the End Of Stream or gets a error
                 self.finished.wait()
 
     def SpeechStarted(self):
@@ -75,6 +78,8 @@ class SpeechSynthesizer(object):
         self.alexa.send_event(event)
 
     def SpeechFinished(self):
+        self.alexa.state_listener.on_finished()
+
         self.finished.set()
         self.state = 'FINISHED'
         event = {

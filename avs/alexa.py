@@ -30,7 +30,24 @@ import tempfile
 from avs.config import DEFAULT_CONFIG_FILE
 
 
-log = logging.getLogger(__name__)
+logger = logging.getLogger(__name__)
+
+
+class AlexaStateListner(object):
+    def __init__(self):
+        pass
+
+    def on_listening(self):
+        logger.debug('on_listening')
+
+    def on_thinking(self):
+        logger.debug('on_thinking')
+
+    def on_speaking(self):
+        logger.debug('on_speaking')
+
+    def on_finished(self):
+        logger.debug('on_finished')
 
 
 class Alexa(object):
@@ -44,6 +61,8 @@ class Alexa(object):
         self.Speaker = Speaker(self)
         self.Alerts = Alerts(self)
         self.System = System(self)
+
+        self.state_listener = AlexaStateListner()
 
         # handle audio to speech recognizer
         self.put = self.SpeechRecognizer.put
@@ -85,7 +104,7 @@ class Alexa(object):
             try:
                 self._run()
             except Exception as e:
-                log.exception(e)
+                logger.exception(e)
                 raise
 
     def _run(self):
@@ -115,8 +134,8 @@ class Alexa(object):
 
         self.done.clear()
         while not self.done.is_set():
-            # log.info("Waiting for event to send to AVS")
-            # log.info("Connection socket can_read %s", conn._sock.can_read)
+            # logger.info("Waiting for event to send to AVS")
+            # logger.info("Connection socket can_read %s", conn._sock.can_read)
             try:
                 event, listener, attachment = self.event_queue.get(timeout=0.25)
             except queue.Empty:
@@ -158,7 +177,7 @@ class Alexa(object):
                 'context': self.context,
                 'event': event
             }
-            log.debug('metadata: {}'.format(json.dumps(metadata, indent=4)))
+            logger.debug('metadata: {}'.format(json.dumps(metadata, indent=4)))
 
             json_part = '--{}\r\n'.format(eventchannel_boundary)
             json_part += 'Content-Disposition: form-data; name="metadata"\r\n'
@@ -188,17 +207,17 @@ class Alexa(object):
             end_part = '\r\n--{}--'.format(eventchannel_boundary)
             conn.send(end_part.encode('utf-8'), final=True, stream_id=stream_id)
 
-            log.info("wait for response")
+            logger.info("wait for response")
             resp = conn.get_response(stream_id)
-            log.info("status code: %s", resp.status)
+            logger.info("status code: %s", resp.status)
 
             if resp.status == 200:
                 self._read_response(resp)
             elif resp.status == 204:
                 pass
             else:
-                log.warning(resp.headers)
-                log.warning(resp.read())
+                logger.warning(resp.headers)
+                logger.warning(resp.read())
 
             if listener and callable(listener):
                 listener()
@@ -222,7 +241,7 @@ class Alexa(object):
         def iter_lines(response, delimiter=None):
             pending = None
             for chunk in response.read_chunked():
-                # log.debug("Chunk size is {}".format(len(chunk)))
+                # logger.debug("Chunk size is {}".format(len(chunk)))
                 if pending is not None:
                     chunk = pending + chunk
                 if delimiter:
@@ -251,20 +270,20 @@ class Alexa(object):
         else:
             lines = iter_lines(response, delimiter=b"\r\n")
         for line in lines:
-            # log.debug("iter_line is {}...".format(repr(line)[0:30]))
+            # logger.debug("iter_line is {}...".format(repr(line)[0:30]))
             if line == boundary or line == endboundary:
-                # log.debug("Newly on boundary")
+                # logger.debug("Newly on boundary")
                 on_boundary = True
                 if in_payload:
                     in_payload = False
                     if content_type == "application/json":
-                        log.info("Finished downloading JSON")
+                        logger.info("Finished downloading JSON")
                         json_payload = json.loads(payload.getvalue().decode('utf-8'))
-                        log.debug(json_payload)
+                        logger.debug(json_payload)
                         if 'directive' in json_payload:
                             directives.append(json_payload['directive'])
                     else:
-                        log.info("Finished downloading {} which is {}".format(content_type, content_id))
+                        logger.info("Finished downloading {} which is {}".format(content_type, content_id))
                         payload.seek(0)
                         # TODO, start to stream this to speakers as soon as we start getting bytes
                         # strip < and >
@@ -272,15 +291,15 @@ class Alexa(object):
                         with open(os.path.join(tempfile.gettempdir(), '{}.mp3'.format(content_id)), 'wb') as f:
                             f.write(payload.read())
 
-                        log.info('write audio to {}.mp3'.format(content_id))
+                        logger.info('write audio to {}.mp3'.format(content_id))
 
                 continue
             elif on_boundary:
-                # log.debug("Now in header")
+                # logger.debug("Now in header")
                 on_boundary = False
                 in_header = True
             elif in_header and line == b"":
-                # log.debug("Found end of header")
+                # logger.debug("Found end of header")
                 in_header = False
                 in_payload = True
                 first_payload_block = True
@@ -288,7 +307,7 @@ class Alexa(object):
                 continue
 
             if in_header:
-                # log.debug(repr(line))
+                # logger.debug(repr(line))
                 if len(line) > 1:
                     header, value = line.decode('utf-8').split(":", 1)
                     ctype, pdict = cgi.parse_header(value)
@@ -299,7 +318,7 @@ class Alexa(object):
 
             if in_payload:
                 # add back the bytes that our iter_lines consumed
-                log.info("Found %s bytes of %s %s, first_payload_block=%s",
+                logger.info("Found %s bytes of %s %s, first_payload_block=%s",
                          len(line), content_id, content_type, first_payload_block)
                 if first_payload_block:
                     first_payload_block = False
@@ -311,7 +330,7 @@ class Alexa(object):
 
         if buffer is not None:
             if in_payload:
-                log.info(
+                logger.info(
                     "Didn't see an entire directive, buffering to put at top of next frame")
                 buffer.write(payload.read())
             else:
@@ -322,7 +341,7 @@ class Alexa(object):
             self._handle_directive(directive)
 
     def _handle_directive(self, directive):
-        log.debug(json.dumps(directive, indent=4))
+        logger.debug(json.dumps(directive, indent=4))
         try:
             namespace = directive['header']['namespace']
             name = directive['header']['name']
@@ -332,14 +351,14 @@ class Alexa(object):
                 if directive_func:
                     directive_func(directive)
                 else:
-                    log.info('{}.{} is not implemented yet'.format(namespace, name))
+                    logger.info('{}.{} is not implemented yet'.format(namespace, name))
             else:
-                log.info('{} is not implemented yet'.format(namespace))
+                logger.info('{} is not implemented yet'.format(namespace))
 
         except KeyError as e:
-            log.exception(e)
+            logger.exception(e)
         except Exception as e:
-            log.exception(e)
+            logger.exception(e)
 
     def _ping(self, connection):
         if datetime.datetime.utcnow() >= self._ping_time:
@@ -347,12 +366,12 @@ class Alexa(object):
             #                                     headers={'authorization': 'Bearer {}'.format(self.token)})
             # resp = connection.get_response(ping_stream_id)
             # if resp.status != 200 and resp.status != 204:
-            #     log.warning(resp.read())
+            #     logger.warning(resp.read())
             #     raise ValueError("/ping requests returned {}".format(resp.status))
 
             connection.ping(uuid.uuid4().hex[:8])
 
-            log.debug('ping at {}'.format(datetime.datetime.utcnow().strftime("%a %b %d %H:%M:%S %Y")))
+            logger.debug('ping at {}'.format(datetime.datetime.utcnow().strftime("%a %b %d %H:%M:%S %Y")))
 
             # ping every 5 minutes (60 seconds early for latency) to maintain the connection
             self._ping_time = datetime.datetime.utcnow() + datetime.timedelta(seconds=240)
@@ -372,7 +391,7 @@ class Alexa(object):
                 expiry = datetime.datetime.strptime(self._config['expiry'], date_format)
                 # refresh 60 seconds early to avoid chance of using expired access_token
                 if (datetime.datetime.utcnow() - expiry) > datetime.timedelta(seconds=60):
-                    log.info("Refreshing access_token")
+                    logger.info("Refreshing access_token")
                 else:
                     return self._config['access_token']
 
@@ -385,7 +404,7 @@ class Alexa(object):
 
         r = self.requests.post(self._config['refresh_url'], data=payload)
         if r.status_code != 200:
-            log.warning(r.text)
+            logger.warning(r.text)
             raise ValueError("refresh token request returned {}".format(r.status))
         config = r.json()
         print(r.text)
@@ -393,7 +412,7 @@ class Alexa(object):
 
         expiry_time = datetime.datetime.utcnow() + datetime.timedelta(seconds=config['expires_in'])
         self._config['expiry'] = expiry_time.strftime(date_format)
-        log.debug(json.dumps(self._config, indent=4))
+        logger.debug(json.dumps(self._config, indent=4))
 
         return self._config['access_token']
 
