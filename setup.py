@@ -14,7 +14,8 @@ with open('HISTORY.rst') as history_file:
 requirements = [
     'hyper',
     'tornado',
-    'requests'
+    'requests',
+    'python-dateutil'
 ]
 
 setup_requirements = [

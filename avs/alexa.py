@@ -380,7 +380,7 @@ class Alexa(object):
     def context(self):
         # return [self.SpeechRecognizer.context, self.SpeechSynthesizer.context,
         #                    self.AudioPlayer.context, self.Speaker.context, self.Alerts.context]
-        return [self.SpeechSynthesizer.context, self.Speaker.context, self.AudioPlayer.context]
+        return [self.SpeechSynthesizer.context, self.Speaker.context, self.AudioPlayer.context, self.Alerts.context]
 
     @property
     def token(self):

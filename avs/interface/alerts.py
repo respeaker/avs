@@ -1,3 +1,14 @@
+# -*- coding: utf-8 -*-
+
+"""https://developer.amazon.com/public/solutions/alexa/alexa-voice-service/reference/alerts"""
+
+import os
+import datetime
+import dateutil.parser
+from threading import Timer
+import uuid
+
+from avs.player import Player
 
 
 class Alerts(object):
@@ -5,6 +16,32 @@ class Alerts(object):
 
     def __init__(self, alexa):
         self.alexa = alexa
+        self.player = Player()
+
+        self.player.add_callback('eos', self.stop)
+        self.player.add_callback('error', self.stop)
+
+        alarm = os.path.realpath(os.path.join(os.path.dirname(__file__), '../resources/alarm.mp3'))
+        self.alarm_uri = 'file://{}'.format(alarm)
+
+        self.all_alerts = {}
+        self.active_alerts = {}
+
+    def stop(self):
+        """
+        Stop all active alerts
+        """
+        for token in self.active_alerts.keys():
+            self.AlertStopped(token)
+
+        self.active_alerts = {}
+
+    def _start_alert(self, token):
+        if token in self.all_alerts:
+            self.AlertStarted(token)
+
+            # TODO: repeat play alarm until user stops it or timeout
+            self.player.play(self.alarm_uri)
 
     # {
     #     "directive": {
@@ -17,63 +54,179 @@ class Alerts(object):
     #         "payload": {
     #             "token": "{{STRING}}",
     #             "type": "{{STRING}}",
-    #             "scheduledTime": "{{STRING}}",            
+    #             "scheduledTime": "2017-08-07T09:02:58+0000",
     #         }
     #     }
     # }
-    def SetAlert(self):
-        pass
+    def SetAlert(self, directive):
+        payload = directive['payload']
+        token = payload['token']
+        scheduled_time = dateutil.parser.parse(payload['scheduledTime'])
 
-    def SetAlertSucceeded(self):
-        pass
+        # Update the alert
+        if token in self.all_alerts:
+            pass
 
-    def SetAlertFailed(self):
-        pass
+        self.all_alerts[token] = payload
 
+        interval = scheduled_time - datetime.datetime.now(scheduled_time.tzinfo)
+        Timer(interval.seconds, self._start_alert, (token,)).start()
 
-    def DeleteAlert(self):
-        pass
-        
-    def DeleteAlertSucceeded(self):
-        pass
+        self.SetAlertSucceeded(token)
 
-    def DeleteAlertFailed(self):
-        pass
+    def SetAlertSucceeded(self, token):
+        event = {
+            "header": {
+                "namespace": "Alerts",
+                "name": "SetAlertSucceeded",
+                "messageId": uuid.uuid4().hex
+            },
+            "payload": {
+                "token": token
+            }
+        }
 
-    def AlertStarted(self):
-        pass
+        self.alexa.send_event(event)
 
+    def SetAlertFailed(self, token):
+        event = {
+            "header": {
+                "namespace": "Alerts",
+                "name": "SetAlertFailed",
+                "messageId": uuid.uuid4().hex
+            },
+            "payload": {
+                "token": token
+            }
+        }
 
-    def AlertStopped(self):
-        pass
-        
-    def AlertEnteredForeground(self):
-        pass
+        self.alexa.send_event(event)
 
-    def AlertEnteredBackground(self):
-        pass
+    # {
+    #     "directive": {
+    #         "header": {
+    #             "namespace": "Alerts",
+    #             "name": "DeleteAlert",
+    #             "messageId": "{{STRING}}",
+    #             "dialogRequestId": "{{STRING}}"
+    #         },
+    #         "payload": {
+    #             "token": "{{STRING}}"
+    #         }
+    #     }
+    # }
+    def DeleteAlert(self, directive):
+        token = directive['payload']['token']
+
+        if token in self.active_alerts:
+            self.AlertStopped(token)
+
+        if token in self.all_alerts:
+            del self.all_alerts[token]
+
+        self.DeleteAlertSucceeded(token)
+
+    def DeleteAlertSucceeded(self, token):
+        event = {
+            "header": {
+                "namespace": "Alerts",
+                "name": "DeleteAlertSucceeded",
+                "messageId": uuid.uuid4().hex
+            },
+            "payload": {
+                "token": token
+            }
+        }
+
+        self.alexa.send_event(event)
+
+    def DeleteAlertFailed(self, token):
+        event = {
+            "header": {
+                "namespace": "Alerts",
+                "name": "DeleteAlertFailed",
+                "messageId": uuid.uuid4().hex
+            },
+            "payload": {
+                "token": token
+            }
+        }
+
+        self.alexa.send_event(event)
+
+    def AlertStarted(self, token):
+        self.active_alerts[token] = self.all_alerts[token]
+
+        event = {
+            "header": {
+                "namespace": "Alerts",
+                "name": "AlertStarted",
+                "messageId": uuid.uuid4().hex
+            },
+            "payload": {
+                "token": token
+            }
+        }
+
+        self.alexa.send_event(event)
+
+    def AlertStopped(self, token):
+        if token in self.active_alerts:
+            del self.active_alerts[token]
+
+        if token in self.all_alerts:
+            del self.all_alerts[token]
+
+        event = {
+            "header": {
+                "namespace": "Alerts",
+                "name": "AlertStopped",
+                "messageId": "{STRING}"
+            },
+            "payload": {
+                "token": token
+            }
+        }
+
+        self.alexa.send_event(event)
+
+    def AlertEnteredForeground(self, token):
+        event = {
+            "header": {
+                "namespace": "Alerts",
+                "name": "AlertEnteredForeground",
+                "messageId": uuid.uuid4().hex
+            },
+            "payload": {
+                "token": token
+            }
+        }
+
+        self.alexa.send_event(event)
+
+    def AlertEnteredBackground(self, token):
+        event = {
+            "header": {
+                "namespace": "Alerts",
+                "name": "AlertEnteredBackground",
+                "messageId": uuid.uuid4().hex
+            },
+            "payload": {
+                "token": token
+            }
+        }
+
+        self.alexa.send_event(event)
 
     @property
     def context(self):
         return {
-                    "header": {
-                        "namespace": "Alerts",
-                        "name": "AlertsState"
-                    },
-                    "payload": {
-                        "allAlerts": [
-                                        {
-                                "token": "{{STRING}}",
-                                "type": "{{STRING}}",
-                                "scheduledTime": "{{STRING}}"
-                            }
-                        ],
-                        "activeAlerts": [
-                                        {
-                                "token": "{{STRING}}",
-                                "type": "{{STRING}}",
-                                "scheduledTime": "{{STRING}}"
-                            }
-                        ]
-                    }
-                }
+            "header": {
+                "namespace": "Alerts",
+                "name": "AlertsState"
+            },
+            "payload": {
+                "allAlerts": list(self.all_alerts.values()),
+                "activeAlerts": list(self.active_alerts.values())
+            }
+        }
