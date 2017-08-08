@@ -43,9 +43,11 @@ class SpeechSynthesizer(object):
     # Content-ID: {{Audio Item CID}}
     # {{BINARY AUDIO ATTACHMENT}}
     def Speak(self, directive):
-        dialog_request_id = directive['header']['dialogRequestId']
-        if self.alexa.SpeechRecognizer.dialog_request_id != dialog_request_id:
-            return
+        # directive from dueros may not have the dialogRequestId
+        if 'dialogRequestId' in directive['header']:
+            dialog_request_id = directive['header']['dialogRequestId']
+            if self.alexa.SpeechRecognizer.dialog_request_id != dialog_request_id:
+                return
 
         self.token = directive['payload']['token']
         url = directive['payload']['url']
