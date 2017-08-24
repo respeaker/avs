@@ -2,11 +2,6 @@
 
 
 import pyaudio
-try:
-    import Queue as queue
-except ImportError:
-    import queue
-
 import logging
 
 logger = logging.getLogger(__file__)
@@ -14,15 +9,12 @@ logger = logging.getLogger(__file__)
 
 class Audio(object):
 
-    def __init__(self, rate=16000, channels=None, device_index=None):
-        self.channels = channels if channels else 1
+    def __init__(self, rate=16000, frames_size=None, channels=None, device_index=None):
         self.sample_rate = rate
-
-        # always 10 ms audio chunk
-        self.chunk_size = rate / 100
+        self.frames_size = frames_size if frames_size else rate / 100
+        self.channels = channels if channels else 1
 
         self.pyaudio_instance = pyaudio.PyAudio()
-        self.queue = queue.Queue()
 
         if device_index is None:
             if channels:
@@ -46,7 +38,7 @@ class Audio(object):
             input_device_index=device_index,
             channels=self.channels,
             rate=int(self.sample_rate),
-            frames_per_buffer=int(self.chunk_size),
+            frames_per_buffer=int(self.frames_size),
             stream_callback=self._callback,
             input=True
         )
