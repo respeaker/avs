@@ -7,6 +7,9 @@ import json
 import time
 import uuid
 import requests
+import logging
+import os
+import tempfile
 
 try:
     import Queue as queue
@@ -23,11 +26,7 @@ from avs.interface.speaker import Speaker
 from avs.interface.speech_recognizer import SpeechRecognizer
 from avs.interface.speech_synthesizer import SpeechSynthesizer
 from avs.interface.system import System
-
-import logging
-import os
-import tempfile
-from avs.config import DEFAULT_CONFIG_FILE
+import avs.config
 
 
 logger = logging.getLogger(__name__)
@@ -53,7 +52,7 @@ class AlexaStateListner(object):
 class Alexa(object):
     API_VERSION = 'v20160207'
 
-    def __init__(self, config):
+    def __init__(self, config=None):
         self.event_queue = queue.Queue()
         self.SpeechRecognizer = SpeechRecognizer(self)
         self.SpeechSynthesizer = SpeechSynthesizer(self)
@@ -69,11 +68,12 @@ class Alexa(object):
 
         # listen() will trigger SpeechRecognizer's Recognize event
         self.listen = self.SpeechRecognizer.Recognize
-        self.done = threading.Event()
+
+        self.done = False
 
         self.requests = requests.Session()
 
-        self._config = config
+        self._config = avs.config.load(configfile=config)
 
         if ('host_url' not in self._config) or (not self._config['host_url']):
             self._config['host_url'] = 'avs-alexa-na.amazon.com'
@@ -88,19 +88,24 @@ class Alexa(object):
         self.last_activity = datetime.datetime.utcnow()
         self._ping_time = None
 
+    def set_state_listner(self, listner):
+        self.state_listener = listner
+
     def start(self):
+        self.done = False
+
         t = threading.Thread(target=self.run)
         t.daemon = True
         t.start()
 
     def stop(self):
-        self.done.set()
+        self.done = True
 
     def send_event(self, event, listener=None, attachment=None):
         self.event_queue.put((event, listener, attachment))
 
     def run(self):
-        while not self.done.is_set():
+        while not self.done:
             try:
                 self._run()
             except Exception as e:
@@ -132,8 +137,7 @@ class Alexa(object):
 
         self.System.SynchronizeState()
 
-        self.done.clear()
-        while not self.done.is_set():
+        while not self.done:
             # logger.info("Waiting for event to send to AVS")
             # logger.info("Connection socket can_read %s", conn._sock.can_read)
             try:
@@ -429,27 +433,8 @@ def main():
     from avs.mic import Audio
 
     logging.basicConfig(level=logging.DEBUG)
-    configuration_file = DEFAULT_CONFIG_FILE
 
-    if len(sys.argv) < 2:
-        if not os.path.isfile(configuration_file):
-            print('Usage: {} [configuration.json]'.format(sys.argv[0]))
-            print('\nIf configuration file is not provided, {} will be used'.format(configuration_file))
-            sys.exit(1)
-    else:
-        configuration_file = sys.argv[1]
-
-    with open(configuration_file, 'r') as f:
-        config = json.load(f)
-        require_keys = ['product_id', 'client_id', 'client_secret']
-        for key in require_keys:
-            if not ((key in config) and config[key]):
-                print('{} should include "{}"'.format(configuration_file, key))
-                sys.exit(2)
-
-            if not ('refresh_token' in config) and config['refresh_token']:
-                print('Not "refresh_token" available. you should run `alexa-auth {}` first'.format(configuration_file))
-                sys.exit(3)
+    config = None if len(sys.argv) < 2 else sys.argv[1]
 
     audio = Audio()
     alexa = Alexa(config)
@@ -469,6 +454,9 @@ def main():
             alexa.listen()
         except KeyboardInterrupt:
             break
+
+    alexa.stop()
+    audio.stop()
 
 
 if __name__ == '__main__':

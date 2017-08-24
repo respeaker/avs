@@ -12,6 +12,7 @@ with open('HISTORY.rst') as history_file:
     history = history_file.read()
 
 requirements = [
+    'click',
     'hyper',
     'tornado',
     'requests',
@@ -19,11 +20,11 @@ requirements = [
 ]
 
 setup_requirements = [
-    # TODO(respeaker): put setup requirements (distutils extensions, etc.) here
+    'wheel'
 ]
 
 test_requirements = [
-    # TODO: put package test requirements here
+    'pytest'
 ]
 
 setup(
@@ -41,7 +42,8 @@ setup(
         'console_scripts': [
             'alexa=avs.main:main',
             'alexa-tap=avs.alexa:main',
-            'alexa-auth=avs.auth:main'
+            'alexa-auth=avs.auth:main',
+            'dueros-auth=avs.auth:main'
         ],
     },
     license="GNU General Public License v3",

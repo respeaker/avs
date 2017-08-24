@@ -6,19 +6,14 @@ Hands-free alexa with respeaker using pocketsphinx to search keyword
 It depends on respeaker python library (https://github.com/respeaker/respeaker_python_library)
 """
 
-import os
+
 import sys
-import json
 import time
 import threading
 try:
     import Queue as queue
 except ImportError:
     import queue
-
-from avs.alexa import Alexa
-from avs.mic import Audio
-from avs.config import DEFAULT_CONFIG_FILE
 
 import logging
 
@@ -83,28 +78,12 @@ class KWS(object):
 
 
 def main():
+    from avs.alexa import Alexa
+    from avs.mic import Audio
+
     logging.basicConfig(level=logging.DEBUG)
-    configuration_file = DEFAULT_CONFIG_FILE
 
-    if len(sys.argv) < 2:
-        if not os.path.isfile(configuration_file):
-            print('Usage: {} [configuration.json]'.format(sys.argv[0]))
-            print('\nIf configuration file is not provided, {} will be used'.format(configuration_file))
-            sys.exit(1)
-    else:
-        configuration_file = sys.argv[1]
-
-    with open(configuration_file, 'r') as f:
-        config = json.load(f)
-        require_keys = ['product_id', 'client_id', 'client_secret']
-        for key in require_keys:
-            if not ((key in config) and config[key]):
-                print('{} should include "{}"'.format(configuration_file, key))
-                sys.exit(2)
-
-            if not ('refresh_token' in config) and config['refresh_token']:
-                print('Not "refresh_token" available. you should run `alexa-auth {}` first'.format(configuration_file))
-                sys.exit(3)
+    config = None if len(sys.argv) < 2 else sys.argv[1]
 
     audio = Audio()
     kws = KWS()

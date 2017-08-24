@@ -1,19 +1,20 @@
 
-import sys
 import tornado.httpserver
 import tornado.ioloop
 import tornado.web
+import time
 import json
 import uuid
 import requests
 import datetime
+import click
 
-from avs.config import DEFAULT_CONFIG_FILE
+import avs.config
 
 
 class MainHandler(tornado.web.RequestHandler):
     def initialize(self, config, output):
-        self.config = config
+        self.config = avs.config.load(configfile=config)
         self.output = output
 
         if ('host_url' in self.config) and self.config['host_url'] == 'dueros-h2.baidu.com':
@@ -40,6 +41,7 @@ class MainHandler(tornado.web.RequestHandler):
 
             r = requests.post(self.token_url, data=payload)
             config = r.json()
+            print(r.text)
             self.config['refresh_token'] = config['refresh_token']
 
             if 'access_token' in config:
@@ -48,39 +50,32 @@ class MainHandler(tornado.web.RequestHandler):
                 self.config['expiry'] = expiry_time.strftime(date_format)
                 self.config['access_token'] = config['access_token']
 
-            print('save the configuration to {}'.format(self.output))
             print(json.dumps(self.config, indent=4))
-            with open(self.output, 'w') as f:
-                json.dump(self.config, f, indent=4)
+            avs.config.save(self.config, configfile=self.output)
 
             self.write('Succeed to login Amazon Alexa Voice Service')
             self.finish()
             tornado.ioloop.IOLoop.instance().stop()
         else:
-            if 'refresh_token' not in self.config:
-                scope_data = json.dumps({
-                    "alexa:all": {
-                        "productID": self.config['product_id'],
-                        "productInstanceAttributes": {
-                            "deviceSerialNumber": uuid.uuid4().hex
-                        }
+            scope_data = json.dumps({
+                "alexa:all": {
+                    "productID": self.config['product_id'],
+                    "productInstanceAttributes": {
+                        "deviceSerialNumber": uuid.uuid4().hex
                     }
-                })
-                payload = {
-                    "client_id": self.config['client_id'],
-                    "scope": self.scope,
-                    "scope_data": scope_data,
-                    "response_type": "code",
-                    "redirect_uri": redirect_uri
                 }
+            })
+            payload = {
+                "client_id": self.config['client_id'],
+                "scope": self.scope,
+                "scope_data": scope_data,
+                "response_type": "code",
+                "redirect_uri": redirect_uri
+            }
 
-                req = requests.Request('GET', self.oauth_url, params=payload)
-                p = req.prepare()
-                self.redirect(p.url)
-            else:
-                self.write('Already authorized')
-                self.finish()
-                tornado.ioloop.IOLoop.instance().stop()
+            req = requests.Request('GET', self.oauth_url, params=payload)
+            p = req.prepare()
+            self.redirect(p.url)
 
 
 def login(config, output):
@@ -91,7 +86,10 @@ def login(config, output):
     tornado.ioloop.IOLoop.instance().close()
 
 
-def setup(config, output):
+@click.command()
+@click.option('--config', '-c', help='configuration json file with product_id, client_id and client_secret')
+@click.option('--output', '-o', default=avs.config.DEFAULT_CONFIG_FILE, help='output json file with refresh token')
+def main(config, output):
     try:
         import webbrowser
     except ImportError:
@@ -100,35 +98,17 @@ def setup(config, output):
         return
 
     import threading
-    t = threading.Thread(target=login, args=(config, output))
-    t.start()
+    webserver = threading.Thread(target=login, args=(config, output))
+    webserver.daemon = True
+    webserver.start()
     print("A web page should is opened. If not, go to http://127.0.0.1:3000 to start")
     webbrowser.open('http://127.0.0.1:3000')
-    t.join()
 
-
-def main():
-    if len(sys.argv) < 2:
-        print('Usage: {} config.json [output.json]'.format(sys.argv[0]))
-        sys.exit(1)
-
-    if len(sys.argv) < 3:
-        output = DEFAULT_CONFIG_FILE
-    else:
-        output = sys.argv[2]
-
-    with open(sys.argv[1], 'r') as f:
-        config = json.load(f)
-        require_keys = ['product_id', 'client_id', 'client_secret']
-        for key in require_keys:
-            if not ((key in config) and config[key]):
-                print('You should include "{}" in {}'.format(key, sys.argv[1]))
-                sys.exit(2)
-
-        if ('refresh_token' in config) and config['refresh_token']:
-            print('Already authorized')
-        else:
-            setup(config, output)
+    while webserver.is_alive():
+        try:
+            time.sleep(1)
+        except KeyboardInterrupt:
+            break
 
 
 if __name__ == '__main__':
