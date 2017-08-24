@@ -8,26 +8,40 @@ Python Alexa Voice Service App
 .. image:: https://img.shields.io/travis/respeaker/avs.svg
         :target: https://travis-ci.org/respeaker/avs
 
-.. image:: https://readthedocs.org/projects/avs/badge/?version=latest
-        :target: https://avs.readthedocs.io/en/latest/?badge=latest
-        :alt: Documentation Status
-
 
 Features
 --------
 
-* Implement Alexa Voice Service API v20160207
-* Support DuerOS AVS compatible service
+* Support Alexa Voice Service API v20160207
+* `支持DuerOS <https://github.com/respeaker/avs/wiki/%E4%BD%BF%E7%94%A8DuerOS%E7%9A%84AVS%E5%85%BC%E5%AE%B9%E6%9C%8D%E5%8A%A1>`_
+
 
 To do
 -----
 
-* Alerts interface
 * Speaker interface
 * Notifications interface
 
-Usage
------
+Requirements
+-------------
+
+* gstreamer1.0 gstreamer1.0-plugins-good gstreamer1.0-plugins-ugly
+* python-gi python-gst gir1.2-gstreamer-1.0
+* respeaker python library pocketsphinx (optional, for hands-free keyword spotting)
+
+
+Get started
+------------
+
+1. run ``alexa-auth`` to login Amazon, it will save authorization information to ``~/.avs.json``
+2. run ``alexa-tap``, then press Enter to talk with alexa
+3. run ``alexa``, then use "alexa" to start with conversation with alexa, for example, "alexa, what time is it"
+
+
+Change Alexa Voice Service client id and product id
+----------------------------------------------------
+
+If you want to use your own  client id and product id, try:
 
 1. `register for an Amazon Developer Account. <https://github.com/alexa/alexa-avs-raspberry-pi#61---register-your-product-and-create-a-security-profile>`_
 
@@ -39,36 +53,13 @@ Usage
         "client_secret": "z"
     }
 
-    For DuerOS, set OAUTH CONFIG URL to `http://127.0.0.1:3000/authresponse` and add `host_url` and `dueros-device-id` to the config.json, for example
+3. run ``alexa-auth -c config.json``
 
-    {
-        "host_url": "dueros-h2.baidu.com",
-        "dueros-device-id": "storyteller0001",
-        "product_id": "x",
-        "client_id": "y",
-        "client_secret": "z"
-    }
-
-
-
-3. run::
-
-    sudo apt-get install python-gi python-gst gir1.2-gstreamer-1.0    # if using python3, these packages should be python3-gi, python3-gst and gir1.2-gstreamer-1.0
-    pip install avs
-    alexa-auth config.json  # oauth
-    alexa-tap               # press enter and talk
-
-
-4. If you want to run hands free alexa, install `respeaker python library <https://github.com/respeaker/respeaker_python_library>`_ and run::
-
-    alexa
-
+4. run ``alexa-tap`` or ``alexa``
 
 License
 -------
 * Free software: GNU General Public License v3
-
-
 
 
 Credits
