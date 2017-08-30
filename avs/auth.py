@@ -68,10 +68,13 @@ class MainHandler(tornado.web.RequestHandler):
             payload = {
                 "client_id": self.config['client_id'],
                 "scope": self.scope,
-                "scope_data": scope_data,
+                # "scope_data": scope_data,
                 "response_type": "code",
                 "redirect_uri": redirect_uri
             }
+
+            if ('host_url' not in self.config) or self.config['host_url'] != 'dueros-h2.baidu.com':
+                payload['scope_data'] = scope_data
 
             req = requests.Request('GET', self.oauth_url, params=payload)
             p = req.prepare()

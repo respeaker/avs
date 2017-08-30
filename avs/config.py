@@ -13,7 +13,7 @@ def load(configfile=None):
         if os.path.isfile(DEFAULT_CONFIG_FILE):
             configfile = DEFAULT_CONFIG_FILE
         else:
-            if sys.argv[0] == 'dueros-auth':
+            if sys.argv[0].find('dueros-auth') >= 0:
                 product_id = "xiaojing-" + uuid.uuid4().hex
                 return {
                     "dueros-device-id": product_id,
