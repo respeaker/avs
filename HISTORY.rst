@@ -2,6 +2,12 @@
 History
 =======
 
+0.0.6 (2017-08-30)
+------------------
+
+* fix dueros oauth invalid access token issue
+* fix dueros-auth
+
 0.0.5 (2017-08-24)
 ------------------
 
