@@ -73,6 +73,7 @@ class Alexa(object):
 
         self.requests = requests.Session()
 
+        self._configfile = config
         self._config = avs.config.load(configfile=config)
 
         if ('host_url' not in self._config) or (not self._config['host_url']):
@@ -282,10 +283,12 @@ class Alexa(object):
                     in_payload = False
                     if content_type == "application/json":
                         logger.info("Finished downloading JSON")
-                        json_payload = json.loads(payload.getvalue().decode('utf-8'))
-                        logger.debug(json_payload)
-                        if 'directive' in json_payload:
-                            directives.append(json_payload['directive'])
+                        utf8_payload = payload.getvalue().decode('utf-8')
+                        if utf8_payload:
+                            json_payload = json.loads(utf8_payload)
+                            logger.debug(json_payload)
+                            if 'directive' in json_payload:
+                                directives.append(json_payload['directive'])
                     else:
                         logger.info("Finished downloading {} which is {}".format(content_type, content_id))
                         payload.seek(0)
@@ -417,6 +420,8 @@ class Alexa(object):
         expiry_time = datetime.datetime.utcnow() + datetime.timedelta(seconds=config['expires_in'])
         self._config['expiry'] = expiry_time.strftime(date_format)
         logger.debug(json.dumps(self._config, indent=4))
+
+        avs.config.save(self._config, configfile=self._configfile)
 
         return self._config['access_token']
 
