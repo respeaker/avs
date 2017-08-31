@@ -2,6 +2,11 @@
 History
 =======
 
+0.0.7 (2017-08-31)
+------------------
+
+* able to handle a few kind of connection failures and do reconnection
+
 0.0.6 (2017-08-30)
 ------------------
 

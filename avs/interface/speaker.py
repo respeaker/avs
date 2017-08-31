@@ -1,13 +1,10 @@
-
-
 class Speaker(object):
-
     def __init__(self, event_queue):
         pass
-        
+
     def AdjustVolume(self):
         pass
-        
+
     def VolumeChanged(self):
         pass
 
@@ -20,12 +17,12 @@ class Speaker(object):
     @property
     def context(self):
         return {
-                    "header": {
-                        "namespace": "Speaker",
-                        "name": "VolumeState"
-                    },
-                    "payload": {
-                        "volume": 50,
-                        "muted": False
-                    }
-                }
+            "header": {
+                "namespace": "Speaker",
+                "name": "VolumeState"
+            },
+            "payload": {
+                "volume": 50,
+                "muted": False
+            }
+        }
