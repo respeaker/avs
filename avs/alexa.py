@@ -4,12 +4,13 @@
 import cgi
 import io
 import json
-import time
-import uuid
-import requests
 import logging
 import os
+import sys
 import tempfile
+import uuid
+
+import requests
 
 try:
     import Queue as queue
@@ -27,7 +28,6 @@ from avs.interface.speech_recognizer import SpeechRecognizer
 from avs.interface.speech_synthesizer import SpeechSynthesizer
 from avs.interface.system import System
 import avs.config
-
 
 logger = logging.getLogger(__name__)
 
@@ -109,9 +109,19 @@ class Alexa(object):
         while not self.done:
             try:
                 self._run()
-            except Exception as e:
+            except AttributeError as e:
                 logger.exception(e)
-                raise
+                continue
+            except hyper.http20.exceptions.StreamResetError as e:
+                logger.exception(e)
+                continue
+            except ValueError as e:
+                logging.exception(e)
+                # failed to get an access token, exit
+                sys.exit(1)
+            except Exception as e:
+                logging.exception(e)
+                continue
 
     def _run(self):
         conn = hyper.HTTP20Connection('{}:443'.format(self._config['host_url']), force_proto='h2')
@@ -326,7 +336,7 @@ class Alexa(object):
             if in_payload:
                 # add back the bytes that our iter_lines consumed
                 logger.info("Found %s bytes of %s %s, first_payload_block=%s",
-                         len(line), content_id, content_type, first_payload_block)
+                            len(line), content_id, content_type, first_payload_block)
                 if first_payload_block:
                     first_payload_block = False
                 else:
@@ -409,12 +419,24 @@ class Alexa(object):
             'refresh_token': self._config['refresh_token']
         }
 
-        r = self.requests.post(self._config['refresh_url'], data=payload)
-        if r.status_code != 200:
-            logger.warning(r.text)
-            raise ValueError("refresh token request returned {}".format(r.status))
-        config = r.json()
-        print(r.text)
+        response = None
+
+        # try to request an access token 3 times
+        for i in range(3):
+            try:
+                response = self.requests.post(self._config['refresh_url'], data=payload)
+                if response.status_code != 200:
+                    logger.warning(response.text)
+                else:
+                    break
+            except Exception as e:
+                logger.exception(e)
+                continue
+
+        if (response is None) or (not hasattr(response, 'status_code')) or response.status_code != 200:
+            raise ValueError("refresh token request returned {}".format(response.status))
+
+        config = response.json()
         self._config['access_token'] = config['access_token']
 
         expiry_time = datetime.datetime.utcnow() + datetime.timedelta(seconds=config['expires_in'])
