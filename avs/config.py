@@ -42,10 +42,7 @@ def load(configfile=None):
 
 def save(config, configfile=None):
     if configfile is None:
-        if os.path.isfile(DEFAULT_CONFIG_FILE):
-            configfile = DEFAULT_CONFIG_FILE
-        else:
-            raise ValueError('No configuration available')
+        configfile = DEFAULT_CONFIG_FILE
 
     with open(configfile, 'w') as f:
         json.dump(config, f, indent=4)
