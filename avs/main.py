@@ -16,6 +16,9 @@ except ImportError:
     import queue
 
 import logging
+from avs.alexa import Alexa
+from avs.mic import Audio
+
 
 logger = logging.getLogger(__file__)
 
@@ -78,14 +81,11 @@ class KWS(object):
 
 
 def main():
-    from avs.alexa import Alexa
-    from avs.mic import Audio
-
     logging.basicConfig(level=logging.DEBUG)
 
     config = None if len(sys.argv) < 2 else sys.argv[1]
 
-    audio = Audio()
+    audio = Audio(frames_size=1600)
     kws = KWS()
     alexa = Alexa(config)
 
