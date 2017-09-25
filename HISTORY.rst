@@ -2,6 +2,11 @@
 History
 =======
 
+0.0.8 (2017-09-25)
+------------------
+
+* limit audio queue length, fix string to invalid filename
+
 0.0.7 (2017-08-31)
 ------------------
 
