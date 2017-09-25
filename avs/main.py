@@ -19,9 +19,8 @@ import logging
 from avs.alexa import Alexa
 from avs.mic import Audio
 
-
 logger = logging.getLogger(__file__)
-
+logging.basicConfig(level=logging.DEBUG)
 
 class KWS(object):
     def __init__(self):
@@ -81,13 +80,22 @@ class KWS(object):
 
 
 def main():
-    logging.basicConfig(level=logging.DEBUG)
+    from respeaker.pixel_ring import pixel_ring
+
 
     config = None if len(sys.argv) < 2 else sys.argv[1]
 
     audio = Audio(frames_size=1600)
     kws = KWS()
     alexa = Alexa(config)
+
+    def speak():
+        pixel_ring.speak(10, 0)
+
+    alexa.state_listener.on_listening = pixel_ring.listen
+    alexa.state_listener.on_thinking = pixel_ring.wait
+    alexa.state_listener.on_speaking = speak
+    alexa.state_listener.on_finished = pixel_ring.off
 
     audio.link(kws)
     kws.link(alexa)
