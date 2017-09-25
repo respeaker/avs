@@ -26,7 +26,7 @@ class SpeechRecognizer(object):
         self.dialog_request_id = ''
 
         self.listening = False
-        self.audio_queue = queue.Queue()
+        self.audio_queue = queue.Queue(maxsize=1000)
 
     def put(self, audio):
         """
