@@ -9,6 +9,7 @@ import os
 import sys
 import tempfile
 import uuid
+import base64
 
 import requests
 
@@ -305,7 +306,8 @@ class Alexa(object):
                         # TODO, start to stream this to speakers as soon as we start getting bytes
                         # strip < and >
                         content_id = content_id[1:-1]
-                        with open(os.path.join(tempfile.gettempdir(), '{}.mp3'.format(content_id)), 'wb') as f:
+                        filename = base64.urlsafe_b64encode(content_id)
+                        with open(os.path.join(tempfile.gettempdir(), '{}.mp3'.format(filename)), 'wb') as f:
                             f.write(payload.read())
 
                         logger.info('write audio to {}.mp3'.format(content_id))

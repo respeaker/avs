@@ -2,6 +2,7 @@ import os
 import tempfile
 import threading
 import uuid
+import base64
 
 from avs.player import Player
 
@@ -52,7 +53,8 @@ class SpeechSynthesizer(object):
         self.token = directive['payload']['token']
         url = directive['payload']['url']
         if url.startswith('cid:'):
-            mp3_file = os.path.join(tempfile.gettempdir(), url[4:] + '.mp3')
+            filename = base64.urlsafe_b64encode(url[4:])
+            mp3_file = os.path.join(tempfile.gettempdir(), filename + '.mp3')
             if os.path.isfile(mp3_file):
                 self.finished.clear()
                 # os.system('mpv "{}"'.format(mp3_file))

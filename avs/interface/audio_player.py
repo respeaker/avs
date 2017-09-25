@@ -5,6 +5,7 @@
 import os
 import tempfile
 import uuid
+import base64
 
 from avs.player import Player
 
@@ -54,7 +55,8 @@ class AudioPlayer(object):
         self.token = directive['payload']['audioItem']['stream']['token']
         audio_url = directive['payload']['audioItem']['stream']['url']
         if audio_url.startswith('cid:'):
-            mp3_file = os.path.join(tempfile.gettempdir(), audio_url[4:] + '.mp3')
+            filename = base64.urlsafe_b64encode(audio_url[4:])
+            mp3_file = os.path.join(tempfile.gettempdir(), filename + '.mp3')
             if os.path.isfile(mp3_file):
                 # os.system('mpv "{}"'.format(mp3_file))
                 # os.system('rm -rf "{}"'.format(mp3_file))
