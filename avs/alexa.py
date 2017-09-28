@@ -168,6 +168,7 @@ class Alexa(object):
 
             if event is None:
                 self._ping(conn)
+                self.System.UserInactivityReport()
                 continue
 
             headers = {

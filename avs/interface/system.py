@@ -1,3 +1,6 @@
+
+"""https://developer.amazon.com/public/solutions/alexa/alexa-voice-service/reference/system"""
+
 import uuid
 import datetime
 
@@ -5,6 +8,7 @@ import datetime
 class System(object):
     def __init__(self, alexa):
         self.alexa = alexa
+        self.last_inactive_report = datetime.datetime.utcnow()
 
     def SynchronizeState(self):
         event = {
@@ -20,7 +24,17 @@ class System(object):
         self.alexa.send_event(event)
 
     def UserInactivityReport(self):
-        inactive_time = datetime.datetime.utcnow() - self.alexa.last_activity
+        current = datetime.datetime.utcnow()
+        dt = current - self.last_inactive_report
+
+        # hourly report the amount of time elapsed since the last user activity
+        if dt.seconds < (59 * 60):
+            return
+
+        self.last_inactive_report = current
+
+        inactive_time = current - self.alexa.last_activity
+        inactive_time.minute
 
         event = {
             "header": {
