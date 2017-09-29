@@ -2,6 +2,12 @@
 History
 =======
 
+0.0.9 (2017-09-29)
+------------------
+
+* add LED light for respeaker core and respeaker usb mic array
+* add inactive time report event
+
 0.0.8 (2017-09-25)
 ------------------
 
