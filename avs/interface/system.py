@@ -34,7 +34,6 @@ class System(object):
         self.last_inactive_report = current
 
         inactive_time = current - self.alexa.last_activity
-        inactive_time.minute
 
         event = {
             "header": {
