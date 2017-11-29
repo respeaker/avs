@@ -27,6 +27,8 @@ class Alerts(object):
         self.all_alerts = {}
         self.active_alerts = {}
 
+        self.state = 'IDLE'
+
     def stop(self):
         """
         Stop all active alerts
@@ -35,6 +37,17 @@ class Alerts(object):
             self.AlertStopped(token)
 
         self.active_alerts = {}
+        self.state = 'IDLE'
+
+    def enter_background(self):
+        if self.state == 'FOREGROUND':
+            self.state = 'BACKGROUND'
+            self.player.pause()
+
+    def enter_foreground(self):
+        if self.state == 'BACKGROUND':
+            self.state = 'FOREGROUND'
+            self.player.resume()
 
     def _start_alert(self, token):
         if token in self.all_alerts:
@@ -155,6 +168,9 @@ class Alerts(object):
         self.alexa.send_event(event)
 
     def AlertStarted(self, token):
+        if self.state == 'IDLE':
+            self.state = 'FOREGROUND'
+
         self.active_alerts[token] = self.all_alerts[token]
 
         event = {
@@ -176,6 +192,9 @@ class Alerts(object):
 
         if token in self.all_alerts:
             del self.all_alerts[token]
+
+        if not self.active_alerts:
+            self.state = 'IDLE'
 
         event = {
             "header": {
