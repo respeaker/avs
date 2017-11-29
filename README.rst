@@ -25,9 +25,19 @@ To do
 Requirements
 -------------
 
-* gstreamer1.0 gstreamer1.0-plugins-good gstreamer1.0-plugins-ugly
-* python-gi python-gst gir1.2-gstreamer-1.0
-* respeaker python library pocketsphinx (optional, for hands-free keyword spotting)
+* gstreamer1.0-plugins-good gstreamer1.0-plugins-ugly gir1.2-gstreamer-1.0
+* python-gi python-gst-1.0 python-pyaudio
+* respeaker python library  and pocketsphinx (optional, for hands-free keyword spotting)
+
+
+Installation
+-------------
+
+* For ReSpeaker Core (MT7688), gstreamer, pyaudio and pocketsphinx and respeaker python library are installed by default, just run ``pip install avs``
+* For Ubuntu/Debian::
+
+    sudo apt-get install gstreamer1.0-plugins-good gstreamer1.0-plugins-ugly gir1.2-gstreamer-1.0 python-gi python-gst-1.0 python-pyaudio
+    sudo pip install avs respeaker pocketsphinx
 
 
 Get started
