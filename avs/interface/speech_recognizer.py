@@ -52,8 +52,6 @@ class SpeechRecognizer(object):
         self.audio_queue.queue.clear()
         self.listening = True
 
-        self.alexa.state_listener.on_listening()
-
         def on_finished():
             self.alexa.state_listener.on_finished()
 
@@ -63,8 +61,12 @@ class SpeechRecognizer(object):
         # Stop playing if Alexa is speaking or AudioPlayer is playing
         if self.alexa.SpeechSynthesizer.state == 'PLAYING':
             self.alexa.SpeechSynthesizer.stop()
+            self.alexa.listener_canceler.set()
         elif self.alexa.AudioPlayer.state == 'PLAYING':
             self.alexa.AudioPlayer.pause()
+            self.alexa.listener_canceler.set()
+
+        self.alexa.state_listener.on_listening()
 
         self.dialog_request_id = dialog if dialog else uuid.uuid4().hex
 
