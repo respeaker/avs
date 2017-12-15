@@ -33,9 +33,15 @@ import avs.config
 logger = logging.getLogger(__name__)
 
 
-class AlexaStateListner(object):
+class AlexaStateListener(object):
     def __init__(self):
         pass
+
+    def on_ready(self):
+        logger.debug('on_ready')
+
+    def on_disconnected(self):
+        logger.debug('on_disconnected')
 
     def on_listening(self):
         logger.debug('on_listening')
@@ -62,7 +68,7 @@ class Alexa(object):
         self.Alerts = Alerts(self)
         self.System = System(self)
 
-        self.state_listener = AlexaStateListner()
+        self.state_listener = AlexaStateListener()
         self.listener_canceler = threading.Event()
 
         # handle audio to speech recognizer

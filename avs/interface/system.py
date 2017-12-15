@@ -21,7 +21,10 @@ class System(object):
             }
         }
 
-        self.alexa.send_event(event)
+        def on_finished():
+            self.alexa.state_listener.on_ready()
+
+        self.alexa.send_event(event, listener=on_finished)
 
     def UserInactivityReport(self):
         current = datetime.datetime.utcnow()
