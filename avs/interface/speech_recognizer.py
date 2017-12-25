@@ -142,6 +142,7 @@ class SpeechRecognizer(object):
         if 'initiator' in directive['payload']:
             initiator = directive['payload']['initiator']
 
+        self.alexa.listener_canceler.set()
         self.Recognize(dialog=dialog, initiator=initiator, timeout=timeout)
 
     def ExpectSpeechTimedOut(self):

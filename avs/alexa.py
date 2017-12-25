@@ -10,6 +10,7 @@ import sys
 import tempfile
 import uuid
 import base64
+import hashlib
 
 import requests
 
@@ -318,6 +319,7 @@ class Alexa(object):
                         # strip < and >
                         content_id = content_id[1:-1]
                         filename = base64.urlsafe_b64encode(content_id)
+                        filename = hashlib.md5(filename).hexdigest()
                         with open(os.path.join(tempfile.gettempdir(), '{}.mp3'.format(filename)), 'wb') as f:
                             f.write(payload.read())
 
