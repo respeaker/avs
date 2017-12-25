@@ -43,7 +43,8 @@ setup(
             'alexa=avs.main:main',
             'alexa-tap=avs.alexa:main',
             'alexa-auth=avs.auth:main',
-            'dueros-auth=avs.auth:main'
+            'dueros-auth=avs.auth:main',
+            'alexa-audio-check=avs.check:main'
         ],
     },
     license="GNU General Public License v3",
