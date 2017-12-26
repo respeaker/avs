@@ -492,6 +492,8 @@ def main():
                 input('press ENTER to talk\n')
             except SyntaxError:
                 pass
+            except NameError:
+                pass
 
             alexa.listen()
         except KeyboardInterrupt:
