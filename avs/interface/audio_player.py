@@ -7,8 +7,12 @@ import tempfile
 import uuid
 import base64
 import hashlib
+import requests
+import logging
 
 from avs.player import Player
+
+logger = logging.getLogger('AudioPlayer')
 
 
 class AudioPlayer(object):
@@ -65,6 +69,18 @@ class AudioPlayer(object):
                 self.player.play('file://{}'.format(mp3_file))
                 self.PlaybackStarted()
         else:
+            if audio_url.find('radiotime.com') >= 0:
+                logger.debug('parse TuneIn audio stream: {}'.format(audio_url))
+
+                try:
+                    response = requests.get(audio_url)
+                    lines = response.content.decode().split('\n')
+                    logger.debug(lines)
+                    if lines and lines[0]:
+                        audio_url = lines[0]
+                except Exception:
+                    pass
+
             # os.system('mpv {}'.format(audio_url))
             self.player.play(audio_url)
             self.PlaybackStarted()
