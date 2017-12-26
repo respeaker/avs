@@ -21,7 +21,7 @@ class SpeechRecognizer(object):
 
     def __init__(self, alexa):
         self.alexa = alexa
-        self.profile = 'NEAR_FIELD'
+        self.profile = 'FAR_FIELD'
 
         self.dialog_request_id = ''
 
@@ -72,7 +72,7 @@ class SpeechRecognizer(object):
 
         # TODO: set initiator properly
         if initiator is None:
-            initiator = self.TAP
+            initiator = ""
 
         event = {
             "header": {
