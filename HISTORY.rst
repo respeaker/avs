@@ -2,6 +2,12 @@
 History
 =======
 
+0.1.0 (2017-12-27)
+------------------
+
+* support TuneIn audio stream
+* add alexa-audio-check util
+
 0.0.9 (2017-09-29)
 ------------------
 

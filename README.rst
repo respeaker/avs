@@ -44,9 +44,15 @@ Installation
 Get started
 ------------
 
-1. run ``alexa-auth`` to login Amazon, it will save authorization information to ``~/.avs.json``
-2. run ``alexa-tap``, then press Enter to talk with alexa
-3. run ``alexa``, then use "alexa" to start with conversation with alexa, for example, "alexa, what time is it"
+1. run ``alexa-audio-check`` to check if recording & playing is OK. If RMS is not zero, recording is OK, if you can hear alarm, playing is OK.
+
+    $alexa-audio-check
+    RMS: 41
+    RMS: 43
+
+2. run ``alexa-auth`` to login Amazon, it will save authorization information to ``~/.avs.json``
+3. run ``alexa-tap``, then press Enter to talk with alexa
+4. run ``alexa``, then use "alexa" to start with conversation with alexa, for example, "alexa, what time is it"
 
 
 Change Alexa Voice Service client id and product id
