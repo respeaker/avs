@@ -69,6 +69,8 @@ class AudioPlayer(object):
                 self.player.play('file://{}'.format(mp3_file))
                 self.PlaybackStarted()
         else:
+            # -- TuneIn workaround...
+            #
             if audio_url.find('radiotime.com') >= 0:
                 logger.debug('parse TuneIn audio stream: {}'.format(audio_url))
 
@@ -78,10 +80,30 @@ class AudioPlayer(object):
                     logger.debug(lines)
                     if lines and lines[0]:
                         audio_url = lines[0]
+                        logger.debug('Set audio_url to [%s]' % (audio_url))
                 except Exception:
                     pass
 
-            # os.system('mpv {}'.format(audio_url))
+            # -- Handle other playlists...
+            #
+            response = requests.head(audio_url)
+            contentType = response.headers['Content-Type'] or ''
+            if contentType.find('pls') >= 0:
+                try:
+                    logger.debug('parsing playlist: {}'.format(audio_url))
+                    response = requests.get(audio_url)
+                    lines = response.content.decode().split('\n')
+                    logger.debug(lines)
+                    for line in lines:
+                      if line.find('File') == 0:
+                        audio_url = lines[2].split('=', 2)[1]
+                        logger.debug('Set audio_url to [%s]' % (audio_url))
+                        break
+                except Exception:
+                    pass
+
+            # -- Play the found URL...
+            #
             self.player.play(audio_url)
             self.PlaybackStarted()
 
