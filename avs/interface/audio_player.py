@@ -58,54 +58,56 @@ class AudioPlayer(object):
     def Play(self, directive):
         behavior = directive['payload']['playBehavior']
         self.token = directive['payload']['audioItem']['stream']['token']
-        audio_url = directive['payload']['audioItem']['stream']['url']
+        audio_url = get_audio_url(directive['payload']['audioItem']['stream']['url'])
+
+        self.player.play(audio_url)
+        self.PlaybackStarted()
+
+
+    # -- Return a cleaned up, playable URL, for the returned URL...
+    #
+    def get_audio_url(audio_url):
         if audio_url.startswith('cid:'):
             filename = base64.urlsafe_b64encode(audio_url[4:])
             filename = hashlib.md5(filename).hexdigest()
             mp3_file = os.path.join(tempfile.gettempdir(), filename + '.mp3')
             if os.path.isfile(mp3_file):
-                # os.system('mpv "{}"'.format(mp3_file))
-                # os.system('rm -rf "{}"'.format(mp3_file))
-                self.player.play('file://{}'.format(mp3_file))
-                self.PlaybackStarted()
-        else:
-            # -- TuneIn workaround...
-            #
-            if audio_url.find('radiotime.com') >= 0:
-                logger.debug('parse TuneIn audio stream: {}'.format(audio_url))
+                return 'file://{}'.format(mp3_file)
+            else:
+                logger.warn('Unable to parse %s' % (audio_url))
+                return None
 
-                try:
-                    response = requests.get(audio_url)
-                    lines = response.content.decode().split('\n')
-                    logger.debug(lines)
-                    if lines and lines[0]:
-                        audio_url = lines[0]
-                        logger.debug('Set audio_url to [%s]' % (audio_url))
-                except Exception:
-                    pass
+        if audio_url.find('radiotime.com') >= 0:
+            logger.debug('parse TuneIn audio stream: {}'.format(audio_url))
 
-            # -- Handle other playlists...
-            #
-            response = requests.head(audio_url)
-            contentType = response.headers['Content-Type'] or ''
-            if contentType.find('pls') >= 0:
-                try:
-                    logger.debug('parsing playlist: {}'.format(audio_url))
-                    response = requests.get(audio_url)
-                    lines = response.content.decode().split('\n')
-                    logger.debug(lines)
-                    for line in lines:
-                      if line.find('File') == 0:
+            try:
+                response = requests.get(audio_url)
+                lines = response.content.decode().split('\n')
+                logger.debug(lines)
+                if lines and lines[0]:
+                    audio_url = lines[0]
+                    logger.debug('Set audio_url to [%s]' % (audio_url))
+            except Exception:
+                pass
+
+        response = requests.head(audio_url)
+        contentType = response.headers['Content-Type'] or ''
+        if contentType.find('pls') >= 0:
+            try:
+                logger.debug('parsing playlist: {}'.format(audio_url))
+                response = requests.get(audio_url)
+                lines = response.content.decode().split('\n')
+                logger.debug(lines)
+                for line in lines:
+                    if line.find('File') == 0:
                         audio_url = lines[2].split('=', 2)[1]
                         logger.debug('Set audio_url to [%s]' % (audio_url))
                         break
-                except Exception:
-                    pass
+            except Exception:
+                pass
 
-            # -- Play the found URL...
-            #
-            self.player.play(audio_url)
-            self.PlaybackStarted()
+        return audio_url
+
 
     def PlaybackStarted(self):
         self.state = 'PLAYING'
