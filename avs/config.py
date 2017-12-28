@@ -24,11 +24,7 @@ def load(configfile=None):
                 }
 
             else:
-                return {
-                    "product_id": "ReSpeaker",
-                    "client_id": "amzn1.application-oa2-client.91b0cebd9074412cba1570a5dd03fc6e",
-                    "client_secret": "fbd7a0e72953c1dd9a920670cf7f4115f694cd47c32a1513dc12a804c7f804e2"
-                }
+                raise Exception('Could not find config file')
 
     with open(configfile, 'r') as f:
         config = json.load(f)
