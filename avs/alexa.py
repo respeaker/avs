@@ -98,7 +98,7 @@ class Alexa(object):
         self.last_activity = datetime.datetime.utcnow()
         self._ping_time = None
 
-    def set_state_listner(self, listner):
+    def set_state_listener(self, listner):
         self.state_listener = listner
 
     def start(self):
@@ -478,7 +478,7 @@ def main():
 
     config = None if len(sys.argv) < 2 else sys.argv[1]
 
-    audio = Audio()
+    audio = Audio(frames_size=1600)
     alexa = Alexa(config)
 
     audio.link(alexa)
