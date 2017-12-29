@@ -18,6 +18,7 @@ class SpeechRecognizer(object):
     PROFILES = {'CLOSE_TALK', 'NEAR_FIELD', 'FAR_FIELD'}
     PRESS_AND_HOLD = {'type': 'PRESS_AND_HOLD', 'payload': {}}
     TAP = {'type': 'TAP', 'payload': {}}
+    WAKEWORD = {'type': 'WAKEWORD', 'payload': {}}
 
     def __init__(self, alexa):
         self.alexa = alexa
@@ -54,7 +55,6 @@ class SpeechRecognizer(object):
 
         self.audio_queue.queue.clear()
         self.listening = True
-        self.timeout = timeout / 10 # 10 ms chunk
 
         def on_finished():
             self.alexa.state_listener.on_finished()
@@ -75,7 +75,7 @@ class SpeechRecognizer(object):
         self.dialog_request_id = dialog if dialog else uuid.uuid4().hex
 
         if initiator is None:
-            initiator = { "type": "TAP" }
+            initiator = self.WAKEWORD
 
         event = {
             "header": {
@@ -93,15 +93,15 @@ class SpeechRecognizer(object):
 
         def gen():
             time_elapsed = 0
-            while self.listening and time_elapsed <= self.timeout:
+            while self.listening and time_elapsed <= timeout:
                 try:
                     chunk = self.audio_queue.get(timeout=1.0)
                 except queue.Empty:
                     break
 
-                logger.debug('Sending chunk, time_elapsed = %d' % (time_elapsed))
                 yield chunk
-                time_elapsed += 10  # 10 ms chunk
+                time_elapsed += len(chunk) * 1000 / (2 * 16000)  # 16000 fs, 2 bytes width
+                logger.debug('Sending chunk, time_elapsed = {}'.format(time_elapsed))
 
             self.listening = False
             self.alexa.state_listener.on_thinking()
