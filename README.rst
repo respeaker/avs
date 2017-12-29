@@ -44,7 +44,7 @@ Installation
 Get started
 ------------
 
-1. run ``alexa-audio-check`` to check if recording & playing is OK. If RMS is not zero, recording is OK, if you can hear alarm, playing is OK.
+1. run ``alexa-audio-check`` to check if recording & playing is OK. If RMS is not zero, recording is OK, if you can hear alarm, playing is OK:
 
     $alexa-audio-check
     RMS: 41
