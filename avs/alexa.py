@@ -98,7 +98,7 @@ class Alexa(object):
         self.last_activity = datetime.datetime.utcnow()
         self._ping_time = None
 
-    def set_state_listner(self, listner):
+    def set_state_listener(self, listner):
         self.state_listener = listner
 
     def start(self):
