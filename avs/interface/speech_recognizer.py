@@ -47,10 +47,14 @@ class SpeechRecognizer(object):
         """
 
         if self.listening:
+            logger.debug('Already listening, aborting')
             return
+
+        logger.debug('Starting listening')
 
         self.audio_queue.queue.clear()
         self.listening = True
+        self.timeout = timeout / 10 # 10 ms chunk
 
         def on_finished():
             self.alexa.state_listener.on_finished()
@@ -70,9 +74,8 @@ class SpeechRecognizer(object):
 
         self.dialog_request_id = dialog if dialog else uuid.uuid4().hex
 
-        # TODO: set initiator properly
         if initiator is None:
-            initiator = ""
+            initiator = { "type": "TAP" }
 
         event = {
             "header": {
@@ -90,12 +93,13 @@ class SpeechRecognizer(object):
 
         def gen():
             time_elapsed = 0
-            while self.listening or time_elapsed >= timeout:
+            while self.listening and time_elapsed <= self.timeout:
                 try:
                     chunk = self.audio_queue.get(timeout=1.0)
                 except queue.Empty:
                     break
 
+                logger.debug('Sending chunk, time_elapsed = %d' % (time_elapsed))
                 yield chunk
                 time_elapsed += 10  # 10 ms chunk
 
