@@ -2,13 +2,13 @@ class Speaker(object):
     def __init__(self, event_queue):
         pass
 
-    def AdjustVolume(self):
+    def AdjustVolume(self, directive):
         pass
 
     def VolumeChanged(self):
         pass
 
-    def SetMute(self):
+    def SetMute(self, directive):
         pass
 
     def MuteChanged(self):
