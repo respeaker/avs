@@ -39,22 +39,22 @@ class AlexaStateListener(object):
         pass
 
     def on_ready(self):
-        logger.debug('on_ready')
+        logger.info('on_ready')
 
     def on_disconnected(self):
-        logger.debug('on_disconnected')
+        logger.info('on_disconnected')
 
     def on_listening(self):
-        logger.debug('on_listening')
+        logger.info('on_listening')
 
     def on_thinking(self):
-        logger.debug('on_thinking')
+        logger.info('on_thinking')
 
     def on_speaking(self):
-        logger.debug('on_speaking')
+        logger.info('on_speaking')
 
     def on_finished(self):
-        logger.debug('on_finished')
+        logger.info('on_finished')
 
 
 class Alexa(object):
@@ -373,7 +373,7 @@ class Alexa(object):
             self._handle_directive(directive)
 
     def _handle_directive(self, directive):
-        logger.debug(json.dumps(directive, indent=4))
+        logger.info(json.dumps(directive, indent=4))
         try:
             namespace = directive['header']['namespace']
             name = directive['header']['name']
@@ -474,7 +474,7 @@ def main():
     import sys
     from avs.mic import Audio
 
-    logging.basicConfig(level=logging.DEBUG)
+    logging.basicConfig(level=logging.INFO)
 
     config = None if len(sys.argv) < 2 else sys.argv[1]
 
@@ -483,7 +483,7 @@ def main():
 
     audio.link(alexa)
 
-    alexa.start()
+    alexa.start()   
     audio.start()
 
     while True:

@@ -20,7 +20,7 @@ from avs.alexa import Alexa
 from avs.mic import Audio
 
 logger = logging.getLogger(__file__)
-logging.basicConfig(level=logging.DEBUG)
+logging.basicConfig(level=logging.INFO)
 
 class KWS(object):
     def __init__(self):
