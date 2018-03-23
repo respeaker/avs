@@ -73,7 +73,7 @@ class SpeechRecognizer(object):
                 self.conversation -= 1
             logger.info('conversation = {}'.format(self.conversation))
             if not self.conversation:
-                # self.alexa.state_listener.on_finished()
+                self.alexa.state_listener.on_finished()
 
                 if self.alexa.AudioPlayer.state == 'PAUSED':
                     self.alexa.AudioPlayer.resume()

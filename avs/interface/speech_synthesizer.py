@@ -91,8 +91,6 @@ class SpeechSynthesizer(object):
         self.alexa.send_event(event)
 
     def SpeechFinished(self):
-        self.alexa.state_listener.on_finished()
-
         if os.path.isfile(self.mp3_file):
             os.system('rm -rf "{}"'.format(self.mp3_file))
 
