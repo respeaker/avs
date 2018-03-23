@@ -3,6 +3,7 @@
 """https://developer.amazon.com/public/solutions/alexa/alexa-voice-service/reference/audioplayer"""
 
 import os
+import time
 import tempfile
 import uuid
 import base64
@@ -118,12 +119,17 @@ class AudioPlayer(object):
     #     }
     # }
     def Play(self, directive):
+        while self.alexa.SpeechSynthesizer.state == 'PLAYING':
+            time.sleep(1)
+
         behavior = directive['payload']['playBehavior']
         self.token = directive['payload']['audioItem']['stream']['token']
         audio_url = get_audio_url(directive['payload']['audioItem']['stream']['url'])
 
         self.player.play(audio_url)
         self.PlaybackStarted()
+
+        logger.info('audio player is playing')
 
     def PlaybackStarted(self):
         self.state = 'PLAYING'
@@ -200,8 +206,13 @@ class AudioPlayer(object):
     #     }
     # }
     def Stop(self, directive):
+        while self.alexa.SpeechSynthesizer.state == 'PLAYING':
+            time.sleep(1)
+
         self.player.stop()
         self.PlaybackStopped()
+
+        logger.info('audio player is stoped')
 
     def PlaybackStopped(self):
         self.state = 'STOPPED'
@@ -222,6 +233,8 @@ class AudioPlayer(object):
         self.player.pause()
         self.PlaybackPaused()
 
+        logger.info('audio player is paused')
+
     def PlaybackPaused(self):
         self.state = 'PAUSED'
         event = {
@@ -240,6 +253,8 @@ class AudioPlayer(object):
     def resume(self):
         self.player.resume()
         self.PlaybackResumed()
+
+        logger.info('audio player is resumed')
 
     def PlaybackResumed(self):
         self.state = 'PLAYING'

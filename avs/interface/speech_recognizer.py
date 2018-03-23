@@ -2,8 +2,10 @@
 
 """https://developer.amazon.com/public/solutions/alexa/alexa-voice-service/reference/speechrecognizer"""
 
+import time
 import logging
 import uuid
+import threading
 
 try:
     import Queue as queue
@@ -26,8 +28,10 @@ class SpeechRecognizer(object):
 
         self.dialog_request_id = ''
 
-        self.listening = False
         self.audio_queue = queue.Queue(maxsize=1000)
+        self.listening = False
+        self.conversation = 0
+        self.lock = threading.RLock()
 
     def put(self, audio):
         """
@@ -46,9 +50,8 @@ class SpeechRecognizer(object):
         :param timeout:
         :return:
         """
-
         if self.listening:
-            logger.debug('Already listening, aborting')
+            logger.debug('Already listening. Ignore')
             return
 
         logger.debug('Starting listening')
@@ -56,19 +59,35 @@ class SpeechRecognizer(object):
         self.audio_queue.queue.clear()
         self.listening = True
 
-        def on_finished():
-            self.alexa.state_listener.on_finished()
+        with self.lock:
+            self.conversation += 1
 
-            if self.alexa.AudioPlayer.state == 'PAUSED':
-                self.alexa.AudioPlayer.resume()
+        def on_finished():
+            if self.alexa.SpeechSynthesizer.state == 'PLAYING':
+                logger.info('wait until speech synthesizer is finished')
+                while self.alexa.SpeechSynthesizer.state == 'PLAYING':
+                    time.sleep(0.1)
+                logger.info('synthesizer is finished')
+
+            with self.lock:
+                self.conversation -= 1
+            logger.info('conversation = {}'.format(self.conversation))
+            if not self.conversation:
+                # self.alexa.state_listener.on_finished()
+
+                if self.alexa.AudioPlayer.state == 'PAUSED':
+                    self.alexa.AudioPlayer.resume()
 
         # Stop playing if Alexa is speaking or AudioPlayer is playing
         if self.alexa.SpeechSynthesizer.state == 'PLAYING':
+            logger.info('stop speech synthesizer')
             self.alexa.SpeechSynthesizer.stop()
-            self.alexa.listener_canceler.set()
+        elif self.alexa.Alerts.state == 'FOREGROUND':
+            logger.info('stop alert(s)')
+            self.alexa.Alerts.stop()
         elif self.alexa.AudioPlayer.state == 'PLAYING':
+            logger.info('pause audio player')
             self.alexa.AudioPlayer.pause()
-            self.alexa.listener_canceler.set()
 
         self.alexa.state_listener.on_listening()
 
@@ -139,6 +158,9 @@ class SpeechRecognizer(object):
     #   }
     # }
     def ExpectSpeech(self, directive):
+        while self.alexa.SpeechSynthesizer.state == 'PLAYING':
+            time.sleep(0.1)
+
         dialog = directive['header']['dialogRequestId']
         timeout = directive['payload']['timeoutInMilliseconds']
 
@@ -146,7 +168,6 @@ class SpeechRecognizer(object):
         if 'initiator' in directive['payload']:
             initiator = directive['payload']['initiator']
 
-        self.alexa.listener_canceler.set()
         self.Recognize(dialog=dialog, initiator=initiator, timeout=timeout)
 
     def ExpectSpeechTimedOut(self):

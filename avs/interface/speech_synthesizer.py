@@ -4,8 +4,11 @@ import threading
 import uuid
 import base64
 import hashlib
+import logging
 
 from avs.player import Player
+
+logger = logging.getLogger('SpeechSynthesizer')
 
 
 class SpeechSynthesizer(object):
@@ -14,17 +17,18 @@ class SpeechSynthesizer(object):
     def __init__(self, alexa):
         self.alexa = alexa
         self.token = ''
-        self.state = 'FINISHED'
+        self._state = 'FINISHED'
         self.finished = threading.Event()
 
         self.player = Player()
         self.player.add_callback('eos', self.SpeechFinished)
         self.player.add_callback('error', self.SpeechFinished)
+        self.mp3_file = None
 
     def stop(self):
-        self.finished.set()
+        # self.finished.set()
         self.player.stop()
-        self.state = 'FINISHED'
+        self._state = 'FINISHED'
 
     # {
     #     "directive": {
@@ -58,20 +62,22 @@ class SpeechSynthesizer(object):
             filename = hashlib.md5(filename).hexdigest()
             mp3_file = os.path.join(tempfile.gettempdir(), filename + '.mp3')
             if os.path.isfile(mp3_file):
-                self.finished.clear()
+                self.mp3_file = mp3_file
+
+                # self.finished.clear()
+                self.SpeechStarted()
                 # os.system('mpv "{}"'.format(mp3_file))
                 self.player.play('file://{}'.format(mp3_file))
-                self.SpeechStarted()
+
+                logger.info('playing {}'.format(filename))
 
                 self.alexa.state_listener.on_speaking()
 
                 # will be set at SpeechFinished() if the player reaches the End Of Stream or gets a error
-                self.finished.wait()
-
-                os.system('rm -rf "{}"'.format(mp3_file))
+                # self.finished.wait()
 
     def SpeechStarted(self):
-        self.state = 'PLAYING'
+        self._state = 'PLAYING'
         event = {
             "header": {
                 "namespace": "SpeechSynthesizer",
@@ -87,8 +93,11 @@ class SpeechSynthesizer(object):
     def SpeechFinished(self):
         self.alexa.state_listener.on_finished()
 
-        self.finished.set()
-        self.state = 'FINISHED'
+        if os.path.isfile(self.mp3_file):
+            os.system('rm -rf "{}"'.format(self.mp3_file))
+
+        # self.finished.set()
+        self._state = 'FINISHED'
         event = {
             "header": {
                 "namespace": "SpeechSynthesizer",
@@ -102,8 +111,19 @@ class SpeechSynthesizer(object):
         self.alexa.send_event(event)
 
     @property
+    def state(self):
+        if self._state == 'PLAYING' and self.player.state == 'PLAYING':
+            s = 'PLAYING'
+        else:
+            s = 'FINISHED'
+
+        # logger.debug('speech synthesizer is {}'.format(s))
+        return s
+
+    @property
     def context(self):
-        offset = self.player.position if self.state == 'PLAYING' else 0
+        state = self.state
+        offset = self.player.position if state == 'PLAYING' else 0
 
         return {
             "header": {
@@ -113,6 +133,6 @@ class SpeechSynthesizer(object):
             "payload": {
                 "token": self.token,
                 "offsetInMilliseconds": offset,
-                "playerActivity": self.state
+                "playerActivity": state
             }
         }

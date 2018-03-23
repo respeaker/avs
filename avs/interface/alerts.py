@@ -3,9 +3,10 @@
 """https://developer.amazon.com/public/solutions/alexa/alexa-voice-service/reference/alerts"""
 
 import os
+import time
 import datetime
 import dateutil.parser
-from threading import Timer
+from threading import Timer, Event
 import uuid
 
 from avs.player import Player
@@ -18,8 +19,8 @@ class Alerts(object):
         self.alexa = alexa
         self.player = Player()
 
-        self.player.add_callback('eos', self.stop)
-        self.player.add_callback('error', self.stop)
+        self.player.add_callback('eos', self._stop)
+        self.player.add_callback('error', self._stop)
 
         alarm = os.path.realpath(os.path.join(os.path.dirname(__file__), '../resources/alarm.mp3'))
         self.alarm_uri = 'file://{}'.format(alarm)
@@ -28,8 +29,9 @@ class Alerts(object):
         self.active_alerts = {}
 
         self.state = 'IDLE'
+        self.end_event = Event()
 
-    def stop(self):
+    def _stop(self):
         """
         Stop all active alerts
         """
@@ -38,6 +40,12 @@ class Alerts(object):
 
         self.active_alerts = {}
         self.state = 'IDLE'
+
+        self.end_event.set()
+
+    def stop(self):
+        self.player.stop()
+        self._stop()
 
     def enter_background(self):
         if self.state == 'FOREGROUND':
@@ -51,10 +59,25 @@ class Alerts(object):
 
     def _start_alert(self, token):
         if token in self.all_alerts:
+            while self.alexa.SpeechRecognizer.conversation:
+                time.sleep(1)
+
+            if self.alexa.AudioPlayer.state == 'PLAYING':
+                self.alexa.AudioPlayer.pause()
+
             self.AlertStarted(token)
+
+            self.end_event.clear()
 
             # TODO: repeat play alarm until user stops it or timeout
             self.player.play(self.alarm_uri)
+
+            if not self.end_event.wait(timeout=600):
+                self.player.stop()
+
+            if not self.alexa.SpeechRecognizer.conversation:
+                if self.alexa.AudioPlayer.state == 'PAUSED':
+                    self.alexa.AudioPlayer.resume()
 
     # {
     #     "directive": {

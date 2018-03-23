@@ -70,7 +70,6 @@ class Alexa(object):
         self.System = System(self)
 
         self.state_listener = AlexaStateListener()
-        self.listener_canceler = threading.Event()
 
         # handle audio to speech recognizer
         self.put = self.SpeechRecognizer.put
@@ -244,11 +243,8 @@ class Alexa(object):
                 logger.warning(resp.headers)
                 logger.warning(resp.read())
 
-            if listener and callable(listener) and not self.listener_canceler.is_set():
+            if listener and callable(listener):
                 listener()
-
-            if self.listener_canceler.is_set():
-                self.listener_canceler.clear()
 
     def _read_response(self, response, boundary=None, buffer=None):
         if boundary:
