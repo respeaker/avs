@@ -13,12 +13,10 @@ current_player = {}
 
 
 def on_eos(bus, message):
-    if 'callbacks' in current_player and 'eos' in current_player['callbacks']:
-        current_player['callbacks']['eos']()
+    current_player['self'].on_eos()
 
 def on_error(bus, message):
-    if 'callbacks' in current_player and 'error' in current_player['callbacks']:
-        current_player['callbacks']['error']()
+    current_player['self'].on_error()
 
 
 def make_gstreamer_playbin():
@@ -41,41 +39,50 @@ class Player(object):
         self.uri = None
         self.last_position = 0
         self.callbacks = {}
+        self._state = None
 
     def play(self, uri):
         self.uri = uri
 
-        current_player['callbacks'] = self.callbacks
+        current_player['self'] = self
 
         playbin.set_state(Gst.State.NULL)
         playbin.set_property('uri', uri)
         playbin.set_state(Gst.State.PLAYING)
 
-        time.sleep(0.1)
+        self._state = 'PLAYING'
 
     def stop(self):
-        playbin.set_state(Gst.State.NULL)
+        if self._state == 'PLAYING':
+            playbin.set_state(Gst.State.NULL)
+
+        self._state = 'NULL'
 
     def pause(self):
-        playbin.set_state(Gst.State.PAUSED)
+        if self._state == 'PLAYING':
+            self._state = 'PAUSED'
+            playbin.set_state(Gst.State.PAUSED)
 
-        self.last_position = self.position
-        logger.info('paused position: {}'.format(self.last_position))
+            self.last_position = self.position
+            logger.info('paused position: {}'.format(self.last_position))
 
     def resume(self):
-        playbin.set_state(Gst.State.NULL)
+        if self._state == 'PAUSED':
+            self._state = 'PLAYING'
 
-        current_player['callbacks'] = self.callbacks
+            playbin.set_state(Gst.State.NULL)
 
-        playbin.set_property('uri', self.uri)
-        playbin.set_state(Gst.State.PLAYING)
+            current_player['callbacks'] = self.callbacks
 
-        for _ in range(10):
-            if playbin.seek_simple(Gst.Format.TIME,  Gst.SeekFlags.FLUSH | Gst.SeekFlags.KEY_UNIT, self.last_position * Gst.MSECOND):
-                break
-            time.sleep(0.1)
+            playbin.set_property('uri', self.uri)
+            playbin.set_state(Gst.State.PLAYING)
 
-        logger.info('resuming position: {}'.format(self.position))
+            for _ in range(10):
+                if playbin.seek_simple(Gst.Format.TIME,  Gst.SeekFlags.FLUSH | Gst.SeekFlags.KEY_UNIT, self.last_position * Gst.MSECOND):
+                    break
+                time.sleep(0.1)
+
+            logger.info('resuming position: {}'.format(self.position))
 
 
     # name: {eos, ...}
@@ -84,10 +91,22 @@ class Player(object):
             return
 
         self.callbacks[name] = callback
+
+    def on_eos(self):
+        self._state = 'NULL'
+        if 'eos' in self.callbacks:
+            self.callbacks['eos']()
         
+    def on_error(self):
+        self._state = 'NULL'
+        if 'error' in self.callbacks:
+            self.callbacks['error']()
 
     @property
     def duration(self):
+        if self._state != 'PLAYING':
+            return 0
+
         for _ in range(10):
             success, duration = playbin.query_duration(Gst.Format.TIME)
             if success:
@@ -98,6 +117,11 @@ class Player(object):
 
     @property
     def position(self):
+        if self._state == 'PAUSED':
+            return self.last_position
+        elif self._state != 'PLAYING':
+            return 0
+
         for _ in range(10):
             success, position = playbin.query_position(Gst.Format.TIME)
             if success:
@@ -114,5 +138,11 @@ class Player(object):
         # GST_STATE_PAUSED              the element is PAUSED, it is ready to accept and process data.
         #                               Sink elements however only accept one buffer and then block.
         # GST_STATE_PLAYING             the element is PLAYING, the GstClock is running and the data is flowing.
-        _, state, _ = playbin.get_state(Gst.SECOND)
-        return 'FINISHED' if state != Gst.State.PLAYING else 'PLAYING'
+        if self._state == 'PLAYING':
+            _, st, _ = playbin.get_state(Gst.SECOND)
+            if st == Gst.State.PLAYING:
+                return 'PLAYING'
+            else:
+                self._state = 'NULL'
+
+        return self._state
