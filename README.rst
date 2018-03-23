@@ -55,8 +55,8 @@ Get started
 4. run ``alexa``, then use "alexa" to start with conversation with alexa, for example, "alexa, what time is it"
 
     If you are using Linux but not using PulsAudio or ALSA dmix plugin, it is likely that your audio device doesn't support multiple player to play simultaneously.  
-    As `alexa` or `alexa-tap` uses 3 gstreamer player by default, it should not work.
-    In the case, you should try `PLAYER=single alexa` or `PLAYER=single alexa-tap` to use only a single gstreamer player.
+    As ``alexa`` or ``alexa-tap`` uses 3 gstreamer player by default, it should not work.
+    In the case, you should try ``PLAYER=single alexa`` or ``PLAYER=single alexa-tap`` to use only a single gstreamer player.
 
 
 Change Alexa Voice Service client id and product id
