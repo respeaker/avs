@@ -66,7 +66,7 @@ class SpeechRecognizer(object):
             if self.alexa.SpeechSynthesizer.state == 'PLAYING':
                 logger.info('wait until speech synthesizer is finished')
                 while self.alexa.SpeechSynthesizer.state == 'PLAYING':
-                    time.sleep(0.1)
+                    time.sleep(0.01)
                 logger.info('synthesizer is finished')
 
             with self.lock:
