@@ -55,9 +55,9 @@ class Player(object):
         self.event.set()
 
         if self.process and self.process.poll() == None:
+            self.process.terminate()
             if self.state == 'PAUSED':
                 os.kill(self.process.pid, signal.SIGCONT)
-            self.process.terminate()
             
         self.state = 'PLAYING'
         
@@ -65,9 +65,9 @@ class Player(object):
 
     def stop(self):
         if self.process and self.process.poll() == None:
+            self.process.terminate()
             if self.state == 'PAUSED':
                 os.kill(self.process.pid, signal.SIGCONT)
-            self.process.terminate()
         self.state = 'NULL'
 
     def pause(self):
