@@ -14,7 +14,7 @@ Python Alexa Voice Service App
 
 Choose a player from `mpv`, `mpg123` and gstreamer.
 `SpeechSynthesizer` and `Alerts` prefer `mpg123` as it is more responsive.
-`AudioPlayer` likes `mpv` > gstreamer > `mpg123` as `mpv` and gstreamer support more audio format. We can also specify the player of `AudioPlayer` using the environment variable `PLAYER`.
+`AudioPlayer` likes gstreamer > `mpv` > `mpg123`. Gstreamer supports more audio format and works well on raspberry pi. We can also specify the player of `AudioPlayer` using the environment variable `PLAYER`.
 
 * one of mpg123, mpv and gstreamer 1.0
 * python-pyaudio

@@ -2,7 +2,7 @@
 
 """Player
 support mpv, mpg123 and gstreamer 1.0
-It prefers mpv if it is available, otherwise use gstreamer 1.0
+It likes gstreamer 1.0 > mpv > mpg123
 We can specify a player using environment variable PLAYER (mpv, mpg123, gstreamer, single_gstreamer)
 """
 
@@ -19,10 +19,15 @@ elif player_option.find('single') >= 0:
 elif player_option.find('gstreamer') >= 0:
     from gstreamer_player import Player
 else:
-    if os.system('which mpv') == 0:
-        from mpv_player import Player
-    else:
+    try:
         from gstreamer_player import Player
+    except ImportError:
+        if os.system('which mpv') == 0:
+            from mpv_player import Player
+        elif os.system('which mpg123') == 0:
+            from mpg123_player import Player
+        else:
+            raise ImportError('No player available, install gstreamer, mpv or mpg123 first')
 
 
 __all__ = ['Player']
