@@ -5,11 +5,10 @@
 
 from setuptools import setup, find_packages
 
-with open('README.rst') as readme_file:
-    readme = readme_file.read()
 
-with open('HISTORY.rst') as history_file:
-    history = history_file.read()
+with open('README.md') as f:
+    long_description = f.read()
+
 
 requirements = [
     'click',
@@ -29,9 +28,10 @@ test_requirements = [
 
 setup(
     name='avs',
-    version='0.1.1',
+    version='0.2.0',
     description="Python implementation of Alexa Voice Service App",
-    long_description=readme + '\n\n' + history,
+    long_description=long_description,
+    long_description_content_type='text/markdown',
     author="Yihui Xiong",
     author_email='yihui.xiong@hotmail.com',
     url='https://github.com/respeaker/avs',

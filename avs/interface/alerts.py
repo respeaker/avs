@@ -9,7 +9,11 @@ import dateutil.parser
 from threading import Timer, Event
 import uuid
 
-from avs.player import Player
+# prefer mpg123 player as it is more responsive than mpv and gstreamer
+if os.system('which mpg123') == 0:
+    from avs.player.mpg123_player import Player
+else:
+    from avs.player import Player
 
 
 class Alerts(object):

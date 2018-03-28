@@ -1,11 +1,14 @@
 # -*- coding: utf-8 -*-
 
-"""Player using mpg123"""
+"""Player using MPV"""
 
 import os
 import signal
 import threading
 import subprocess
+
+if os.system('which mpv') != 0:
+    raise ImportError('mpv not found, install it first')
 
 
 class Player(object):
@@ -28,7 +31,7 @@ class Player(object):
             print('Playing {}'.format(self.audio))
 
             master, slave = os.openpty()
-            self.process = subprocess.Popen(['mpg123', '-C', self.audio], stdin=master)
+            self.process = subprocess.Popen(['mpv', '--no-video', self.audio], stdin=master)
             self.tty = slave
 
             self.process.wait()
@@ -38,9 +41,6 @@ class Player(object):
                 self.on_eos()
 
     def play(self, uri):
-        if uri.startswith('file://'):
-            uri = uri[7:]
-
         self.audio = uri
         self.event.set()
 
@@ -59,14 +59,14 @@ class Player(object):
     def pause(self):
         if self.state == 'PLAYING':
             self.state = 'PAUSED'
-            os.write(self.tty, 's')
+            os.write(self.tty, ' ')
 
         print('pause()')
 
     def resume(self):
         if self.state == 'PAUSED':
             self.state = 'PLAYING'
-            os.write(self.tty, 's')
+            os.write(self.tty, ' ')
 
     # name: {eos, ...}
     def add_callback(self, name, callback):

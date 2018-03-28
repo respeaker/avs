@@ -6,7 +6,11 @@ import base64
 import hashlib
 import logging
 
-from avs.player import Player
+# prefer mpg123 player as it is more responsive than mpv and gstreamer
+if os.system('which mpg123') == 0:
+    from avs.player.mpg123_player import Player
+else:
+    from avs.player import Player
 
 logger = logging.getLogger('SpeechSynthesizer')
 

@@ -176,6 +176,7 @@ class AudioPlayer(object):
 
     def PlaybackFinished(self):
         self.state = 'FINISHED'
+        logger.info('playback is finished')
 
         event = {
             "header": {
