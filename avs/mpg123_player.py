@@ -8,24 +8,13 @@ import threading
 import subprocess
 
 
-def popen(cmd, on_finished):
-    p = subprocess.Popen(cmd)
-
-    def run(process, on_finished):
-        process.wait()
-        on_finished()
-
-    threading.Thread(target=run, args=(p, on_finished)).start()
-
-    return p
-
-
 class Player(object):
     def __init__(self):
         self.callbacks = {}
         self.process = None
         self.state = 'NULL'
         self.audio = None
+        self.tty = None
 
         self.event = threading.Event()
         t = threading.Thread(target=self._run)
@@ -37,7 +26,11 @@ class Player(object):
             self.event.wait()
             self.event.clear()
             print('Playing {}'.format(self.audio))
-            self.process = subprocess.Popen(['mpg123', self.audio])
+
+            master, slave = os.openpty()
+            self.process = subprocess.Popen(['mpg123', '-C', self.audio], stdin=master)
+            self.tty = slave
+
             self.process.wait()
             print('Finished {}'.format(self.audio))
 
@@ -45,9 +38,6 @@ class Player(object):
                 self.on_eos()
 
     def play(self, uri):
-        print('play()')
-
-
         if uri.startswith('file://'):
             uri = uri[7:]
 
@@ -55,9 +45,7 @@ class Player(object):
         self.event.set()
 
         if self.process and self.process.poll() == None:
-            self.process.terminate()
-            if self.state == 'PAUSED':
-                os.kill(self.process.pid, signal.SIGCONT)
+            os.write(self.tty, 'q')
             
         self.state = 'PLAYING'
         
@@ -65,22 +53,20 @@ class Player(object):
 
     def stop(self):
         if self.process and self.process.poll() == None:
-            self.process.terminate()
-            if self.state == 'PAUSED':
-                os.kill(self.process.pid, signal.SIGCONT)
+            os.write(self.tty, 'q')
         self.state = 'NULL'
 
     def pause(self):
         if self.state == 'PLAYING':
             self.state = 'PAUSED'
-            os.kill(self.process.pid, signal.SIGSTOP)
+            os.write(self.tty, 's')
 
         print('pause()')
 
     def resume(self):
         if self.state == 'PAUSED':
             self.state = 'PLAYING'
-            os.kill(self.process.pid, signal.SIGCONT)
+            os.write(self.tty, 's')
 
     # name: {eos, ...}
     def add_callback(self, name, callback):
