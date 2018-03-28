@@ -2,6 +2,11 @@
 History
 =======
 
+0.2.1 (2018-3-28)
+------------------
+
+* use gstreamer as the default audio player as gstreamer works better that others on raspberry pi
+
 0.2.0 (2018-3-28)
 ------------------
 
