@@ -3,22 +3,37 @@
 """Player using gstreamer."""
 
 import time
+import threading
+
 import gi
 gi.require_version('Gst', '1.0')
-from gi.repository import Gst
+from gi.repository import Gst, GLib, GObject
 
 
-Gst.init(None)
+def setup():
+    GObject.threads_init()
+    Gst.init(None)
+    loop = GLib.MainLoop()
+
+    t = threading.Thread(target=loop.run)
+    t.daemon = True
+    t.start()
+
+setup()
 
 
 class Player(object):
     def __init__(self):
+        self.callbacks = {}
+
         self.player = Gst.ElementFactory.make("playbin", "player")
 
-        self.bus = self.player.get_bus()
-        self.bus.add_signal_watch()
-        self.bus.enable_sync_message_emission()
-        # self.bus.connect('sync-message::eos', self.on_eos)
+        bus = self.player.get_bus()
+        bus.add_signal_watch()
+        bus.connect('message', self.on_message)
+
+        # bus.enable_sync_message_emission()
+        # bus.connect('sync-message::eos', self.on_eos)
 
     def play(self, uri):
         self.player.set_state(Gst.State.NULL)
@@ -39,10 +54,19 @@ class Player(object):
         if not callable(callback):
             return
 
-        def on_message(bus, message):
-            callback()
+        self.callbacks[name] = callback
 
-        self.bus.connect('sync-message::{}'.format(name), on_message)
+    def on_message(self, bus, message):
+        if message.type == Gst.MessageType.EOS:
+            self.player.set_state(Gst.State.NULL)
+            if 'eos' in self.callbacks:
+                self.callbacks['eos']()
+        elif message.type == Gst.MessageType.ERROR:
+            self.player.set_state(Gst.State.NULL)
+            if 'error' in self.callbacks:
+                self.callbacks['error']()
+        else:
+            print(message.type)
 
     @property
     def duration(self):
