@@ -8,16 +8,20 @@ It depends on respeaker python library (https://github.com/respeaker/respeaker_p
 
 
 import sys
+import signal
 import time
 import threading
-try:
+import logging
+
+if sys.version_info < (3, 0):
     import Queue as queue
-except ImportError:
+else:
     import queue
 
-import logging
 from avs.alexa import Alexa
 from avs.mic import Audio
+from respeaker.pixel_ring import pixel_ring
+
 
 logger = logging.getLogger(__file__)
 logging.basicConfig(level=logging.INFO)
@@ -80,9 +84,6 @@ class KWS(object):
 
 
 def main():
-    from respeaker.pixel_ring import pixel_ring
-
-
     config = None if len(sys.argv) < 2 else sys.argv[1]
 
     audio = Audio(frames_size=1600)
@@ -110,11 +111,16 @@ def main():
     kws.start()
     audio.start()
 
-    while True:
-        try:
-            time.sleep(1)
-        except KeyboardInterrupt:
-            break
+    is_quit = threading.Event()
+    
+    def signal_handler(signal, frame):
+        print('Quit')
+        is_quit.set()
+
+    signal.signal(signal.SIGINT, signal_handler)
+
+    while not is_quit.is_set():
+        time.sleep(1)
 
     alexa.stop()
     kws.stop()

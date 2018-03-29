@@ -11,17 +11,19 @@ import tempfile
 import uuid
 import base64
 import hashlib
+import signal
+import threading
+
+if sys.version_info < (3, 0):
+    import Queue as queue
+else:
+    import queue
 
 import requests
-
-try:
-    import Queue as queue
-except ImportError:
-    import queue
-import threading
 import datetime
-
 import hyper
+
+from avs.mic import Audio
 
 from avs.interface.alerts import Alerts
 from avs.interface.audio_player import AudioPlayer
@@ -132,18 +134,22 @@ class Alexa(object):
                 continue
 
     def _run(self):
-        conn = hyper.HTTP20Connection('{}:443'.format(self._config['host_url']), force_proto='h2')
+        conn = hyper.HTTP20Connection('{}:443'.format(
+            self._config['host_url']), force_proto='h2')
 
         headers = {'authorization': 'Bearer {}'.format(self.token)}
         if 'dueros-device-id' in self._config:
             headers['dueros-device-id'] = self._config['dueros-device-id']
 
-        downchannel_id = conn.request('GET', '/{}/directives'.format(self._config['api']), headers=headers)
+        downchannel_id = conn.request(
+            'GET', '/{}/directives'.format(self._config['api']), headers=headers)
         downchannel_response = conn.get_response(downchannel_id)
         if downchannel_response.status != 200:
-            raise ValueError("/directive requests returned {}".format(downchannel_response.status))
+            raise ValueError(
+                "/directive requests returned {}".format(downchannel_response.status))
 
-        ctype, pdict = cgi.parse_header(downchannel_response.headers['content-type'][0].decode('utf-8'))
+        ctype, pdict = cgi.parse_header(
+            downchannel_response.headers['content-type'][0].decode('utf-8'))
         downchannel_boundary = '--{}'.format(pdict['boundary']).encode('utf-8')
         downchannel = conn.streams[downchannel_id]
         downchannel_buffer = io.BytesIO()
@@ -160,7 +166,8 @@ class Alexa(object):
             # logger.info("Waiting for event to send to AVS")
             # logger.info("Connection socket can_read %s", conn._sock.can_read)
             try:
-                event, listener, attachment = self.event_queue.get(timeout=0.25)
+                event, listener, attachment = self.event_queue.get(
+                    timeout=0.25)
             except queue.Empty:
                 event = None
 
@@ -206,13 +213,16 @@ class Alexa(object):
             json_part += 'Content-Type: application/json; charset=UTF-8\r\n\r\n'
             json_part += json.dumps(metadata)
 
-            conn.send(json_part.encode('utf-8'), final=False, stream_id=stream_id)
+            conn.send(json_part.encode('utf-8'),
+                      final=False, stream_id=stream_id)
 
             if attachment:
-                attachment_header = '\r\n--{}\r\n'.format(eventchannel_boundary)
+                attachment_header = '\r\n--{}\r\n'.format(
+                    eventchannel_boundary)
                 attachment_header += 'Content-Disposition: form-data; name="audio"\r\n'
                 attachment_header += 'Content-Type: application/octet-stream\r\n\r\n'
-                conn.send(attachment_header.encode('utf-8'), final=False, stream_id=stream_id)
+                conn.send(attachment_header.encode('utf-8'),
+                          final=False, stream_id=stream_id)
 
                 # AVS_AUDIO_CHUNK_PREFERENCE = 320
                 for chunk in attachment:
@@ -224,12 +234,14 @@ class Alexa(object):
 
                     while downchannel.data:
                         framebytes = downchannel._read_one_frame()
-                        self._read_response(framebytes, downchannel_boundary, downchannel_buffer)
+                        self._read_response(
+                            framebytes, downchannel_boundary, downchannel_buffer)
 
                 self.last_activity = datetime.datetime.utcnow()
 
             end_part = '\r\n--{}--'.format(eventchannel_boundary)
-            conn.send(end_part.encode('utf-8'), final=True, stream_id=stream_id)
+            conn.send(end_part.encode('utf-8'),
+                      final=True, stream_id=stream_id)
 
             logger.info("wait for response")
             resp = conn.get_response(stream_id)
@@ -309,7 +321,8 @@ class Alexa(object):
                             if 'directive' in json_payload:
                                 directives.append(json_payload['directive'])
                     else:
-                        logger.info("Finished downloading {} which is {}".format(content_type, content_id))
+                        logger.info("Finished downloading {} which is {}".format(
+                            content_type, content_id))
                         payload.seek(0)
                         # TODO, start to stream this to speakers as soon as we start getting bytes
                         # strip < and >
@@ -379,7 +392,8 @@ class Alexa(object):
                 if directive_func:
                     directive_func(directive)
                 else:
-                    logger.info('{}.{} is not implemented yet'.format(namespace, name))
+                    logger.info(
+                        '{}.{} is not implemented yet'.format(namespace, name))
             else:
                 logger.info('{} is not implemented yet'.format(namespace))
 
@@ -399,7 +413,8 @@ class Alexa(object):
 
             connection.ping(uuid.uuid4().hex[:8])
 
-            logger.debug('ping at {}'.format(datetime.datetime.utcnow().strftime("%a %b %d %H:%M:%S %Y")))
+            logger.debug('ping at {}'.format(
+                datetime.datetime.utcnow().strftime("%a %b %d %H:%M:%S %Y")))
 
             # ping every 5 minutes (60 seconds early for latency) to maintain the connection
             self._ping_time = datetime.datetime.utcnow() + datetime.timedelta(seconds=240)
@@ -416,7 +431,8 @@ class Alexa(object):
 
         if 'access_token' in self._config:
             if 'expiry' in self._config:
-                expiry = datetime.datetime.strptime(self._config['expiry'], date_format)
+                expiry = datetime.datetime.strptime(
+                    self._config['expiry'], date_format)
                 # refresh 60 seconds early to avoid chance of using expired access_token
                 if (datetime.datetime.utcnow() - expiry) > datetime.timedelta(seconds=60):
                     logger.info("Refreshing access_token")
@@ -435,7 +451,8 @@ class Alexa(object):
         # try to request an access token 3 times
         for i in range(3):
             try:
-                response = self.requests.post(self._config['refresh_url'], data=payload)
+                response = self.requests.post(
+                    self._config['refresh_url'], data=payload)
                 if response.status_code != 200:
                     logger.warning(response.text)
                 else:
@@ -445,12 +462,14 @@ class Alexa(object):
                 continue
 
         if (response is None) or (not hasattr(response, 'status_code')) or response.status_code != 200:
-            raise ValueError("refresh token request returned {}".format(response.status))
+            raise ValueError(
+                "refresh token request returned {}".format(response.status))
 
         config = response.json()
         self._config['access_token'] = config['access_token']
 
-        expiry_time = datetime.datetime.utcnow() + datetime.timedelta(seconds=config['expires_in'])
+        expiry_time = datetime.datetime.utcnow(
+        ) + datetime.timedelta(seconds=config['expires_in'])
         self._config['expiry'] = expiry_time.strftime(date_format)
         logger.debug(json.dumps(self._config, indent=4))
 
@@ -467,9 +486,6 @@ class Alexa(object):
 
 
 def main():
-    import sys
-    from avs.mic import Audio
-
     logging.basicConfig(level=logging.INFO)
 
     config = None if len(sys.argv) < 2 else sys.argv[1]
@@ -479,21 +495,26 @@ def main():
 
     audio.link(alexa)
 
-    alexa.start()   
+    alexa.start()
     audio.start()
 
-    while True:
-        try:
-            try:
-                input('press ENTER to talk\n')
-            except SyntaxError:
-                pass
-            except NameError:
-                pass
+    is_quit = threading.Event()
 
-            alexa.listen()
-        except KeyboardInterrupt:
-            break
+    def signal_handler(signal, frame):
+        print('Quit')
+        is_quit.set()
+
+    signal.signal(signal.SIGINT, signal_handler)
+
+    while not is_quit.is_set():
+        try:
+            input('press ENTER to talk\n')
+        except SyntaxError:
+            pass
+        except NameError:
+            pass
+
+        alexa.listen()
 
     alexa.stop()
     audio.stop()
