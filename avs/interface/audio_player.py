@@ -119,8 +119,8 @@ class AudioPlayer(object):
     #     }
     # }
     def Play(self, directive):
-        while self.alexa.SpeechSynthesizer.state == 'PLAYING':
-            time.sleep(0.01)
+        if self.alexa.SpeechSynthesizer.state == 'PLAYING':
+            self.alexa.SpeechSynthesizer.wait()
 
         behavior = directive['payload']['playBehavior']
         self.token = directive['payload']['audioItem']['stream']['token']
@@ -207,9 +207,6 @@ class AudioPlayer(object):
     #     }
     # }
     def Stop(self, directive):
-        # while self.alexa.SpeechSynthesizer.state == 'PLAYING':
-        #     time.sleep(0.1)
-
         self.player.stop()
         self.PlaybackStopped()
 

@@ -30,9 +30,12 @@ class SpeechSynthesizer(object):
         self.mp3_file = None
 
     def stop(self):
-        # self.finished.set()
+        self.finished.set()
         self.player.stop()
         self._state = 'FINISHED'
+
+    def wait(self):
+        self.finished.wait()
 
     # {
     #     "directive": {
@@ -68,7 +71,7 @@ class SpeechSynthesizer(object):
             if os.path.isfile(mp3_file):
                 self.mp3_file = mp3_file
 
-                # self.finished.clear()
+                self.finished.clear()
                 self.SpeechStarted()
                 # os.system('mpv "{}"'.format(mp3_file))
                 self.player.play('file://{}'.format(mp3_file))
@@ -98,7 +101,7 @@ class SpeechSynthesizer(object):
         if os.path.isfile(self.mp3_file):
             os.system('rm -rf "{}"'.format(self.mp3_file))
 
-        # self.finished.set()
+        self.finished.set()
         self._state = 'FINISHED'
         event = {
             "header": {

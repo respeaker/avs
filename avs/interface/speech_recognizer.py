@@ -2,14 +2,15 @@
 
 """https://developer.amazon.com/public/solutions/alexa/alexa-voice-service/reference/speechrecognizer"""
 
-import time
 import logging
-import uuid
+import sys
+import time
 import threading
+import uuid
 
-try:
+if sys.version_info < (3, 0):
     import Queue as queue
-except ImportError:
+else:
     import queue
 
 logger = logging.getLogger('SpeechRecognizer')
@@ -65,8 +66,7 @@ class SpeechRecognizer(object):
         def on_finished():
             if self.alexa.SpeechSynthesizer.state == 'PLAYING':
                 logger.info('wait until speech synthesizer is finished')
-                while self.alexa.SpeechSynthesizer.state == 'PLAYING':
-                    time.sleep(0.01)
+                self.alexa.SpeechSynthesizer.wait()
                 logger.info('synthesizer is finished')
 
             with self.lock:
