@@ -2,6 +2,11 @@
 History
 =======
 
+0.2.2 (2018-3-29)
+------------------
+
+* fix gstreamer doesn't release audio device after end-of-stream
+
 0.2.1 (2018-3-28)
 ------------------
 
