@@ -20,6 +20,7 @@ Choose a player from `mpv`, `mpg123` and gstreamer.
 * python-pyaudio
 * respeaker python library and pocketsphinx (optional, for hands-free keyword spotting)
 
+>If you use raspberry pi and gstreamer, it is likely that gstreamer's default audio sink is GstOMXHdmiAudioSink. It ignores ALSA configurations and outputs audio to HDMI. If you don't want to use HDMI audio output, you should run `sudo apt remove gstreamer1.0-omx gstreamer1.0-omx-rpi`
 
 ### Installation
 * For ReSpeaker Core (MT7688)
