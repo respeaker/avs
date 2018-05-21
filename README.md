@@ -7,7 +7,7 @@ Python Alexa Voice Service App
 ### Features
 * Support Alexa Voice Service API v20160207
 * Support multiple audio players: gstreamer 1.0, mpv and mpg123
-* 支持[DuerOS](https://github.com/respeaker/avs/wiki/%E4%BD%BF%E7%94%A8DuerOS%E7%9A%84AVS%E5%85%BC%E5%AE%B9%E6%9C%8D%E5%8A%A1)
+* 支持[Baidu DuerOS](https://github.com/respeaker/avs/wiki/%E4%BD%BF%E7%94%A8DuerOS%E7%9A%84AVS%E5%85%BC%E5%AE%B9%E6%9C%8D%E5%8A%A1)
 
 
 ### Requirements
@@ -18,7 +18,7 @@ Choose a player from `mpv`, `mpg123` and gstreamer.
 
 * one of mpg123, mpv and gstreamer 1.0
 * python-pyaudio
-* respeaker python library and pocketsphinx (optional, for hands-free keyword spotting)
+* respeaker python library, pocketsphinx and snowboy (optional, for hands-free keyword spotting)
 
 >If you use raspberry pi and gstreamer, it is likely that gstreamer's default audio sink is GstOMXHdmiAudioSink. It ignores ALSA configurations and outputs audio to HDMI. If you don't want to use HDMI audio output, you should run `sudo apt remove gstreamer1.0-omx gstreamer1.0-omx-rpi`
 
@@ -27,13 +27,12 @@ Choose a player from `mpv`, `mpg123` and gstreamer.
 
   gstreamer1.0, pyaudio and pocketsphinx and respeaker python library are already installed by default, just run `pip install avs`
 
-* For Ubuntu/Debian
+* For Debian/Ubuntu/Raspbian
 
     sudo apt-install mpg123 mpv
     sudo apt-get install gstreamer1.0-plugins-good gstreamer1.0-plugins-bad gstreamer1.0-plugins-ugly \
     gir1.2-gstreamer-1.0 python-gi python-gst-1.0
     sudo apt-get install python-pyaudio
-    sudo pip install avs respeaker pocketsphinx  # requires gcc toolchain and libpulse-dev
 
 ### Get started
 
@@ -45,9 +44,55 @@ Choose a player from `mpv`, `mpg123` and gstreamer.
 
 2. run `alexa-auth` to login Amazon, it will save authorization information to `~/.avs.json`
 3. run `alexa-tap`, then press Enter to talk with alexa
-4. run `alexa`, then use "alexa" to start with conversation with alexa, for example, "alexa, what time is it"
 
 >If you want to use a specified player, use the environment variable `PLAYER` to specify it, such as `PLAYER=mpv alexa-tap` or `PLAYER=mpg123 alexa` or `PLAYER=gstreamer alexa`
+
+### Hands-free Alexa
+#### Using PocketSphinx for Keyword Spotting
+1. install respeaker and pocketsphinx python packages
+
+    `sudo pip install respeaker pocketsphinx  # pocketsphinx requires gcc toolchain and libpulse-dev`
+
+2. run `alexa`, then use "alexa" to start a conversation with alexa, for example, "alexa, what time is it"
+
+#### Using Snowboy for Keyword Spotting
+1. Install [Snowboy](https://github.com/Kitt-AI/snowboy) python library
+2. Install voice-engine python library
+
+    `sudo pip install voice-engine`
+
+3. run the following python script and use the keyword `alexa` to start a conversation with alexa
+
+
+        import signal
+        from voice_engine.source import Source
+        from voice_engine.kws import KWS
+        from avs.alexa import Alexa
+
+
+        src = Source(rate=16000)
+        kws = KWS(model='alexa')
+        alexa = Alexa()
+
+        src.pipeline(kws, alexa)
+
+        def on_detected(keyword):
+            print('detected {}'.format(keyword))
+            alexa.listen()
+
+        kws.set_callback(on_detected)
+
+        is_quit = []
+        def signal_handler(signal, frame):
+            print('Quit')
+            is_quit.append(True)
+
+        signal.signal(signal.SIGINT, signal_handler)
+
+        src.pipeline_start()
+        while not is_quit:
+            time.sleep(1)
+        src.pipeline_stop()
 
 ### To do
 * Speaker interface
