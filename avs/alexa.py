@@ -320,7 +320,7 @@ class Alexa(object):
                             logger.debug(json_payload)
                             if 'directive' in json_payload:
                                 directives.append(json_payload['directive'])
-                    else:
+                    elif content_type == "application/octet-stream":
                         logger.info("Finished downloading {} which is {}".format(
                             content_type, content_id))
                         payload.seek(0)
@@ -331,9 +331,9 @@ class Alexa(object):
                         filename = hashlib.md5(filename).hexdigest()
                         with open(os.path.join(tempfile.gettempdir(), '{}.mp3'.format(filename)), 'wb') as f:
                             f.write(payload.read())
-
                         logger.info('write audio to {}.mp3'.format(content_id))
-
+                    else:
+                        logger.info("Finished downloading {} which is {} abandon it".format(content_type, content_id))
                 continue
             elif on_boundary:
                 # logger.debug("Now in header")
