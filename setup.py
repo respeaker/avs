@@ -28,7 +28,7 @@ test_requirements = [
 
 setup(
     name='avs',
-    version='0.2.2',
+    version='0.3.0',
     description="Python implementation of Alexa Voice Service App",
     long_description=long_description,
     long_description_content_type='text/markdown',
