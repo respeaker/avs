@@ -65,8 +65,8 @@ class Player(object):
             self.player.set_state(Gst.State.NULL)
             if 'error' in self.callbacks:
                 self.callbacks['error']()
-        else:
-            print(message.type)
+        # else:
+        #     print(message.type)
 
     @property
     def duration(self):
