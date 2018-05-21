@@ -6,7 +6,7 @@ Hands-free alexa with respeaker using pocketsphinx to search keyword
 It depends on respeaker python library (https://github.com/respeaker/respeaker_python_library)
 """
 
-
+import signal
 import audioop
 import os
 import time
@@ -36,14 +36,21 @@ def main():
     player1 = Player()
     player2 = Player()
 
-    while True:
-        try:
-            player1.play(alarm_uri)
-            time.sleep(1)
-            player2.play(alarm_uri)
-            time.sleep(3)
-        except KeyboardInterrupt:
-            break
+    is_quit = []
+    def signal_handler(signal, frame):
+        print('Quit')
+        is_quit.append(True)
+
+    signal.signal(signal.SIGINT, signal_handler)
+
+    while not is_quit:
+        player1.play(alarm_uri)
+        time.sleep(1)
+        player1.pause()
+        player2.play(alarm_uri)
+        time.sleep(3)
+        player2.pause()
+
 
     audio.stop()
 
