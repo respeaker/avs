@@ -36,18 +36,18 @@ Python Alexa Voice Service App
 
 * For Debian/Ubuntu/Raspbian
 
-    sudo apt-install mpg123 mpv
-    sudo apt-get install gstreamer1.0-plugins-good gstreamer1.0-plugins-bad gstreamer1.0-plugins-ugly \
-    gir1.2-gstreamer-1.0 python-gi python-gst-1.0
-    sudo apt-get install python-pyaudio
+      sudo apt-install mpg123 mpv
+      sudo apt-get install gstreamer1.0-plugins-good gstreamer1.0-plugins-bad gstreamer1.0-plugins-ugly \
+      gir1.2-gstreamer-1.0 python-gi python-gst-1.0
+      sudo apt-get install python-pyaudio
 
 ### Get started
 
 1. run `alexa-audio-check` to check if recording & playing is OK. If RMS is not zero, recording is OK, if you can hear alarm, playing is OK
 
-    $alexa-audio-check
-    RMS: 41
-    RMS: 43
+        $alexa-audio-check
+        RMS: 41
+        RMS: 43
 
 2. run `alexa-auth` to login Amazon, it will save authorization information to `~/.avs.json`
 3. run `alexa-tap`, then press Enter to talk with alexa
@@ -112,11 +112,11 @@ If you want to use your own  client id and product id, try:
 
 2. create a file named config.json with your product_id, client_id and client_secret
 
-    {
-        "product_id": "x",
-        "client_id": "y",
-        "client_secret": "z"
-    }
+        {
+            "product_id": "x",
+            "client_id": "y",
+            "client_secret": "z"
+        }
 
 3. run `alexa-auth -c config.json`
 
