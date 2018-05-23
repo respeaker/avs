@@ -61,6 +61,13 @@ class SpeechSynthesizer(object):
             if self.alexa.SpeechRecognizer.dialog_request_id != dialog_request_id:
                 return
 
+        if self.alexa.Alerts.state == 'FOREGROUND':
+            logger.info('stop alert(s)')
+            self.alexa.Alerts.stop()
+        elif self.alexa.AudioPlayer.state == 'PLAYING':
+            logger.info('pause audio player')
+            self.alexa.AudioPlayer.pause()
+
         self.token = directive['payload']['token']
         url = directive['payload']['url']
         if url.startswith('cid:'):
@@ -101,6 +108,12 @@ class SpeechSynthesizer(object):
 
         self.finished.set()
         self._state = 'FINISHED'
+
+        self.alexa.state_listener.on_finished()
+
+        if self.alexa.AudioPlayer.state == 'PAUSED':
+            self.alexa.AudioPlayer.resume()
+
         event = {
             "header": {
                 "namespace": "SpeechSynthesizer",
