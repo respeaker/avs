@@ -2,6 +2,12 @@
 History
 =======
 
+0.4.0 (2018-5-23)
+------------------
+
+* rewrite directive parser, fix an issue when EOL is in MP3 octet-stream
+* add a new recorder using ALSA arecord as lots of forks reported that they were confused by the log of pyaudio (portaudio)
+
 0.3.0 (2018-5-21)
 ------------------
 

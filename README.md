@@ -12,13 +12,20 @@ Python Alexa Voice Service App
 
 ### Requirements
 
-Choose a player from `mpv`, `mpg123` and gstreamer.
-`SpeechSynthesizer` and `Alerts` prefer `mpg123` as it is more responsive.
-`AudioPlayer` likes gstreamer > `mpv` > `mpg123`. Gstreamer supports more audio format and works well on raspberry pi. We can also specify the player of `AudioPlayer` using the environment variable `PLAYER`.
+1. Player
 
-* one of mpg123, mpv and gstreamer 1.0
-* python-pyaudio
-* respeaker python library, pocketsphinx and snowboy (optional, for hands-free keyword spotting)
+    We have 3 players (`mpv`, `mpg123` and gstreamer) to use.
+    `SpeechSynthesizer` and `Alerts` prefer `mpg123` which is more responsive.
+    `AudioPlayer` likes gstreamer > `mpv` > `mpg123`. Gstreamer supports more audio format and works well on raspberry pi. We can also specify the player of `AudioPlayer` using the environment variable `PLAYER`.
+
+2. Recorder
+
+    2 recorders (pyaudio & `arecord`) are available. We can use environment variable `RECORDER` to specify the recorder. For example, run `RECORDER=pyaudio alexa-tap` will use pyaudio as the recorder. By default, `arecord` is used as the recorder.
+
+3. Keyword detector (optional)
+
+    Use PocketSphinx or Snowboy. To use pocketsphinx, install respeaker python library and pocketsphinx.
+    To use Snowboy, go to [Snowboy's Github](https://github.com/Kitt-AI/snowboy) to install it.
 
 >If you use raspberry pi and gstreamer, it is likely that gstreamer's default audio sink is GstOMXHdmiAudioSink. It ignores ALSA configurations and outputs audio to HDMI. If you don't want to use HDMI audio output, you should run `sudo apt remove gstreamer1.0-omx gstreamer1.0-omx-rpi`
 
@@ -36,7 +43,7 @@ Choose a player from `mpv`, `mpg123` and gstreamer.
 
 ### Get started
 
-1. run ``alexa-audio-check`` to check if recording & playing is OK. If RMS is not zero, recording is OK, if you can hear alarm, playing is OK
+1. run `alexa-audio-check` to check if recording & playing is OK. If RMS is not zero, recording is OK, if you can hear alarm, playing is OK
 
     $alexa-audio-check
     RMS: 41
@@ -56,7 +63,7 @@ Choose a player from `mpv`, `mpg123` and gstreamer.
 2. run `alexa`, then use "alexa" to start a conversation with alexa, for example, "alexa, what time is it"
 
 #### Using Snowboy for Keyword Spotting
-1. Install [Snowboy](https://github.com/Kitt-AI/snowboy) python library
+1. Install [Snowboy](https://github.com/Kitt-AI/snowboy)
 2. Install voice-engine python library
 
     `sudo pip install voice-engine`
