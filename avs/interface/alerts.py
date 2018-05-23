@@ -10,7 +10,7 @@ from threading import Timer, Event
 import uuid
 
 # prefer mpg123 player as it is more responsive than mpv and gstreamer
-if os.system('which mpg123') == 0:
+if os.system('which mpg123 >/dev/null') == 0:
     from avs.player.mpg123_player import Player
 else:
     from avs.player import Player

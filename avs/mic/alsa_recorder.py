@@ -23,7 +23,8 @@ class Audio(object):
             '-f', 'S16_LE',
             '-c', str(self.channels),
             '-r', str(self.rate),
-            '-D', self.device_name
+            '-D', self.device_name,
+            '-q'
         ]
         process = subprocess.Popen(cmd, stdout=subprocess.PIPE)
 

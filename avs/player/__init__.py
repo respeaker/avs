@@ -20,9 +20,9 @@ else:
     try:
         from gstreamer_player import Player
     except ImportError:
-        if os.system('which mpv') == 0:
+        if os.system('which mpv >/dev/null') == 0:
             from mpv_player import Player
-        elif os.system('which mpg123') == 0:
+        elif os.system('which mpg123 >/dev/null') == 0:
             from mpg123_player import Player
         else:
             raise ImportError('No player available, install one of the players: gstreamer, mpv and mpg123 first')

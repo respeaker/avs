@@ -7,7 +7,7 @@ import signal
 import threading
 import subprocess
 
-if os.system('which mpv') != 0:
+if os.system('which mpv >/dev/null') != 0:
     raise ImportError('mpv not found, install it first')
 
 
@@ -49,8 +49,6 @@ class Player(object):
             
         self.state = 'PLAYING'
         
-        print('set play event')
-
     def stop(self):
         if self.process and self.process.poll() == None:
             os.write(self.tty, 'q')
