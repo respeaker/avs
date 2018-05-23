@@ -22,6 +22,7 @@ else:
 import requests
 import datetime
 import hyper
+import ssl
 
 from avs.mic import Audio
 
@@ -98,6 +99,12 @@ class Alexa(object):
             self._config['api'] = 'v20160207'
             self._config['refresh_url'] = 'https://api.amazon.com/auth/o2/token'
 
+        if 'port' not in self._config:
+            self._config['port'] = 443
+
+        if 'verify' not in self._config:
+            self._config['verify'] = True
+
         self.last_activity = datetime.datetime.utcnow()
         self._ping_time = None
 
@@ -136,8 +143,16 @@ class Alexa(object):
                 continue
 
     def _run(self):
-        conn = hyper.HTTP20Connection('{}:443'.format(
-            self._config['host_url']), force_proto='h2')
+        if not self._config['verify']:
+            ssl_context = hyper.tls.init_context()
+            ssl_context.check_hostname = False
+            ssl_context.verify_mode = ssl.CERT_NONE  # do not verify cert
+        else:
+            ssl_context = None
+        conn = hyper.HTTP20Connection('{}:{}'.format(self._config['host_url'], self._config['port']),
+                                      secure=True,
+                                      force_proto='h2',
+                                      ssl_context=ssl_context)
 
         headers = {'authorization': 'Bearer {}'.format(self.token)}
         if 'dueros-device-id' in self._config:
