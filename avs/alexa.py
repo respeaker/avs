@@ -73,7 +73,7 @@ class Alexa(object):
 
         self.state_listener = AlexaStateListener()
 
-        # handle audio to speech recognizer
+        # put() will send audio to speech recognizer
         self.put = self.SpeechRecognizer.put
 
         # listen() will trigger SpeechRecognizer's Recognize event
@@ -148,11 +148,12 @@ class Alexa(object):
             raise ValueError(
                 "/directive requests returned {}".format(downchannel_response.status))
 
-        ctype, pdict = cgi.parse_header(
+        _, pdict = cgi.parse_header(
             downchannel_response.headers['content-type'][0].decode('utf-8'))
         downchannel_boundary = '--{}'.format(pdict['boundary']).encode('utf-8')
         downchannel = conn.streams[downchannel_id]
-        downchannel_buffer = io.BytesIO()
+        downchannel_buffer = ''
+        downchannel_context = None
         eventchannel_boundary = 'seeed-voice-engine'
 
         # ping every 5 minutes (60 seconds early for latency) to maintain the connection
@@ -177,8 +178,9 @@ class Alexa(object):
 
             while downchannel.data:
                 framebytes = downchannel._read_one_frame()
-                self._read_response(
-                    framebytes, downchannel_boundary, downchannel_buffer)
+                downchannel_buffer, downchannel_context = self._parse_response(
+                    framebytes, downchannel_boundary, downchannel_buffer, downchannel_context
+                )
 
             if event is None:
                 self._ping(conn)
@@ -234,8 +236,9 @@ class Alexa(object):
 
                     while downchannel.data:
                         framebytes = downchannel._read_one_frame()
-                        self._read_response(
-                            framebytes, downchannel_boundary, downchannel_buffer)
+                        downchannel_buffer, downchannel_context = self._parse_response(
+                            framebytes, downchannel_boundary, downchannel_buffer, downchannel_context
+                        )
 
                 self.last_activity = datetime.datetime.utcnow()
 
@@ -244,142 +247,61 @@ class Alexa(object):
                       final=True, stream_id=stream_id)
 
             logger.info("wait for response")
-            resp = conn.get_response(stream_id)
-            logger.info("status code: %s", resp.status)
+            response = conn.get_response(stream_id)
+            logger.info("status code: %s", response.status)
 
-            if resp.status == 200:
-                self._read_response(resp)
-            elif resp.status == 204:
+            if response.status == 200:
+                _, pdict = cgi.parse_header(
+                    response.headers['content-type'][0].decode('utf-8'))
+                boundary = b'--{}'.format(pdict['boundary'])
+                self._parse_response(response.read(), boundary)
+            elif response.status == 204:
                 pass
             else:
-                logger.warning(resp.headers)
-                logger.warning(resp.read())
+                logger.warning(response.headers)
+                logger.warning(response.read())
 
             if listener and callable(listener):
                 listener()
 
-    def _read_response(self, response, boundary=None, buffer=None):
-        if boundary:
-            endboundary = boundary + b"--"
-        else:
-            ctype, pdict = cgi.parse_header(
-                response.headers['content-type'][0].decode('utf-8'))
-            boundary = "--{}".format(pdict['boundary']).encode('utf-8')
-            endboundary = "--{}--".format(pdict['boundary']).encode('utf-8')
+    def _parse_response(self, response, boundary, buffer='', context=None):
+        blen = len(boundary)
+        response = buffer + response
+        while response:
+            pos = response.find(boundary)
+            if pos < 0:
+                break
 
-        on_boundary = False
-        in_header = False
-        in_payload = False
-        first_payload_block = False
-        content_type = None
-        content_id = None
-
-        def iter_lines(response, delimiter=None):
-            pending = None
-            for chunk in response.read_chunked():
-                # logger.debug("Chunk size is {}".format(len(chunk)))
-                if pending is not None:
-                    chunk = pending + chunk
-                if delimiter:
-                    lines = chunk.split(delimiter)
-                else:
-                    lines = chunk.splitlines()
-
-                if lines and lines[-1] and chunk and lines[-1][-1] == chunk[-1]:
-                    pending = lines.pop()
-                else:
-                    pending = None
-
-                for line in lines:
-                    yield line
-
-            if pending is not None:
-                yield pending
-
-        # cache them up to execute after we've downloaded any binary attachments
-        # so that they have the content available
-        directives = []
-        if isinstance(response, bytes):
-            buffer.seek(0)
-            lines = (buffer.read() + response).split(b"\r\n")
-            buffer.flush()
-        else:
-            lines = iter_lines(response, delimiter=b"\r\n")
-        for line in lines:
-            # logger.debug("iter_line is {}...".format(repr(line)[0:30]))
-            if line == boundary or line == endboundary:
-                # logger.debug("Newly on boundary")
-                on_boundary = True
-                if in_payload:
-                    in_payload = False
-                    if content_type == "application/json":
-                        logger.info("Finished downloading JSON")
-                        utf8_payload = payload.getvalue().decode('utf-8')
-                        if utf8_payload:
-                            json_payload = json.loads(utf8_payload)
-                            logger.debug(json_payload)
-                            if 'directive' in json_payload:
-                                directives.append(json_payload['directive'])
-                    elif content_type == "application/octet-stream":
-                        logger.info("Finished downloading {} which is {}".format(
-                            content_type, content_id))
-                        payload.seek(0)
-                        # TODO, start to stream this to speakers as soon as we start getting bytes
-                        # strip < and >
-                        content_id = content_id[1:-1]
-                        filename = base64.urlsafe_b64encode(content_id)
-                        filename = hashlib.md5(filename).hexdigest()
-                        with open(os.path.join(tempfile.gettempdir(), '{}.mp3'.format(filename)), 'wb') as f:
-                            f.write(payload.read())
-                        logger.info('write audio to {}.mp3'.format(content_id))
-                    else:
-                        logger.info("Finished downloading {} which is {} abandon it".format(content_type, content_id))
-                continue
-            elif on_boundary:
-                # logger.debug("Now in header")
-                on_boundary = False
-                in_header = True
-            elif in_header and line == b"":
-                # logger.debug("Found end of header")
-                in_header = False
-                in_payload = True
-                first_payload_block = True
-                payload = io.BytesIO()
-                continue
-
-            if in_header:
-                # logger.debug(repr(line))
-                if len(line) > 1:
-                    header, value = line.decode('utf-8').split(":", 1)
-                    ctype, pdict = cgi.parse_header(value)
-                    if header.lower() == "content-type":
-                        content_type = ctype
-                    if header.lower() == "content-id":
-                        content_id = ctype
-
-            if in_payload:
-                # add back the bytes that our iter_lines consumed
-                logger.info("Found %s bytes of %s %s, first_payload_block=%s",
-                            len(line), content_id, content_type, first_payload_block)
-                if first_payload_block:
-                    first_payload_block = False
-                else:
-                    payload.write(b"\r\n")
-                # TODO write this to a queue.Queue in self._content_cache[content_id]
-                # so that other threads can start to play it right away
-                payload.write(line)
-
-        if buffer is not None:
-            if in_payload:
-                logger.info(
-                    "Didn't see an entire directive, buffering to put at top of next frame")
-                buffer.write(payload.read())
+            if context is None:
+                response = response[pos + blen:]
+                context = {}
+            elif context == {}:
+                # a blank line is between header and body
+                header, body = response[2:pos - 2].split('\r\n\r\n', 1)
+                if header.find('application/json') >= 0:
+                    metadata = json.loads(body.decode('utf-8'))
+                    if 'directive' in metadata:
+                        # check if audio attachment is available
+                        if body.find('cid:') > 0:
+                            context = metadata['directive']
+                        else:
+                            self._handle_directive(metadata['directive'])
+                response = response[pos + blen:]
             else:
-                buffer.write(boundary)
-                buffer.write(b"\r\n")
+                header, body = response[2:pos - 2].split('\r\n\r\n', 1)
+                if header.find('application/octet-stream') >= 0:
+                    content_id = context['payload']['url'][4:]
+                    filename = base64.urlsafe_b64encode(content_id)
+                    filename = hashlib.md5(filename).hexdigest()
+                    with open(os.path.join(tempfile.gettempdir(), '{}.mp3'.format(filename)), 'wb') as f:
+                        f.write(body)
+                    logger.info('write audio to {}.mp3'.format(filename))
+                    self._handle_directive(context)
 
-        for directive in directives:
-            self._handle_directive(directive)
+                response = response[pos + blen:]
+                context = {}
+
+        return response, context
 
     def _handle_directive(self, directive):
         logger.info(json.dumps(directive, indent=4))
@@ -404,13 +326,6 @@ class Alexa(object):
 
     def _ping(self, connection):
         if datetime.datetime.utcnow() >= self._ping_time:
-            # ping_stream_id = connection.request('GET', '/ping',
-            #                                     headers={'authorization': 'Bearer {}'.format(self.token)})
-            # resp = connection.get_response(ping_stream_id)
-            # if resp.status != 200 and resp.status != 204:
-            #     logger.warning(resp.read())
-            #     raise ValueError("/ping requests returned {}".format(resp.status))
-
             connection.ping(uuid.uuid4().hex[:8])
 
             logger.debug('ping at {}'.format(
@@ -449,7 +364,7 @@ class Alexa(object):
         response = None
 
         # try to request an access token 3 times
-        for i in range(3):
+        for _ in range(3):
             try:
                 response = self.requests.post(
                     self._config['refresh_url'], data=payload)
