@@ -127,6 +127,8 @@ class SpeechRecognizer(object):
 
         self.alexa.send_event(event, listener=on_finished, attachment=gen())
 
+    def stop_listen(self):
+        self.listening = False
     # {
     #   "directive": {
     #         "header": {
@@ -140,7 +142,7 @@ class SpeechRecognizer(object):
     #     }
     # }
     def StopCapture(self, directive):
-        self.listening = False
+        self.stop_listen()
         logger.info('StopCapture')
 
     # {

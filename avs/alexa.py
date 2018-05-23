@@ -79,6 +79,8 @@ class Alexa(object):
         # listen() will trigger SpeechRecognizer's Recognize event
         self.listen = self.SpeechRecognizer.Recognize
 
+        self.stop_listen = self.SpeechRecognizer.stop_listen
+
         self.done = False
 
         self.requests = requests.Session()
