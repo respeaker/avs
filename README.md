@@ -10,7 +10,7 @@ Python Alexa Voice Service App
 * 支持[Baidu DuerOS](https://github.com/respeaker/avs/wiki/%E4%BD%BF%E7%94%A8DuerOS%E7%9A%84AVS%E5%85%BC%E5%AE%B9%E6%9C%8D%E5%8A%A1)
 
 
-### Requirements
+### Options
 
 1. Player
 
@@ -29,7 +29,7 @@ Python Alexa Voice Service App
 
 >If you use raspberry pi and gstreamer, it is likely that gstreamer's default audio sink is GstOMXHdmiAudioSink. It ignores ALSA configurations and outputs audio to HDMI. If you don't want to use HDMI audio output, you should run `sudo apt remove gstreamer1.0-omx gstreamer1.0-omx-rpi`
 
-### Installation
+### Requirements
 * For ReSpeaker Core (MT7688)
 
   gstreamer1.0, pyaudio and pocketsphinx and respeaker python library are already installed by default, just run `pip install avs`
