@@ -142,7 +142,6 @@ class Alexa(object):
         downchannel_boundary = '--{}'.format(pdict['boundary']).encode('utf-8')
         downchannel = conn.streams[downchannel_id]
         downchannel_buffer = ''
-        downchannel_context = None
         eventchannel_boundary = 'seeed-voice-engine'
 
         # ping every 5 minutes (60 seconds early for latency) to maintain the connection
@@ -164,8 +163,8 @@ class Alexa(object):
 
             while downchannel.data:
                 framebytes = downchannel._read_one_frame()
-                downchannel_buffer, downchannel_context = self._parse_response(
-                    framebytes, downchannel_boundary, downchannel_buffer, downchannel_context
+                downchannel_buffer = self._parse_response(
+                    framebytes, downchannel_boundary, downchannel_buffer
                 )
 
             if event is None:
@@ -194,7 +193,7 @@ class Alexa(object):
                 'context': self.context,
                 'event': event
             }
-            logger.debug('metadata: {}'.format(json.dumps(metadata, indent=4)))
+            logger.info('metadata: {}'.format(json.dumps(metadata, indent=4)))
 
             json_part = '--{}\r\n'.format(eventchannel_boundary)
             json_part += 'Content-Disposition: form-data; name="metadata"\r\n'
@@ -222,8 +221,8 @@ class Alexa(object):
 
                     while downchannel.data:
                         framebytes = downchannel._read_one_frame()
-                        downchannel_buffer, downchannel_context = self._parse_response(
-                            framebytes, downchannel_boundary, downchannel_buffer, downchannel_context
+                        downchannel_buffer = self._parse_response(
+                            framebytes, downchannel_boundary, downchannel_buffer
                         )
 
                 self.last_activity = datetime.datetime.utcnow()
@@ -250,7 +249,8 @@ class Alexa(object):
             if listener and callable(listener):
                 listener()
 
-    def _parse_response(self, response, boundary, buffer='', context=None):
+    def _parse_response(self, response, boundary, buffer=''):
+        directives = []
         blen = len(boundary)
         response = buffer + response
         while response:
@@ -258,34 +258,31 @@ class Alexa(object):
             if pos < 0:
                 break
 
-            if context is None:
-                context = {}
-            elif context == {}:
-                # a blank line is between header and body
-                header, body = response[:pos-2].split('\r\n\r\n', 1)
-                if header.find('application/json') >= 0:
-                    metadata = json.loads(body.decode('utf-8'))
+            # skip small data block
+            if pos > blen:
+                # a blank line is between parts
+                parts = response[:pos-2].split('\r\n\r\n', 1)
+                if parts[0].find('application/json') >= 0:
+                    metadata = json.loads(parts[1].decode('utf-8'))
                     if 'directive' in metadata:
-                        # check if audio attachment is available
-                        if body.find('cid:') > 0:
-                            context = metadata['directive']
-                        else:
-                            self._handle_directive(metadata['directive'])
-            else:
-                header, body = response[:pos-2].split('\r\n\r\n', 1)
-                if header.find('application/octet-stream') >= 0:
-                    content_id = context['payload']['url'][4:]
-                    filename = base64.urlsafe_b64encode(content_id)[:8]
-                    with open(os.path.join(tempfile.gettempdir(), '{}.mp3'.format(filename)), 'wb') as f:
-                        f.write(body)
-                    logger.info('write audio to {}.mp3'.format(filename))
-                    self._handle_directive(context)
-
-                context = {}
+                        directives.append(metadata['directive'])
+                elif parts[0].find('application/octet-stream') >= 0:
+                    for line in parts[0].splitlines():
+                        name, value = line.split(':', 1)
+                        if name.lower() == 'content-id':
+                            content_id = value.strip()[1:-1]
+                            filename = base64.urlsafe_b64encode(content_id)[:8]
+                            with open(os.path.join(tempfile.gettempdir(), '{}.mp3'.format(filename)), 'wb') as f:
+                                f.write(parts[1])
+                            logger.info('write audio to {}.mp3'.format(filename))
+                            break
 
             response = response[pos+blen+2:]
 
-        return response, context
+        for directive in directives:
+            self._handle_directive(directive)
+
+        return response
 
     def _handle_directive(self, directive):
         logger.info(json.dumps(directive, indent=4))
