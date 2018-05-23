@@ -85,16 +85,6 @@ class Alexa(object):
         self._configfile = config
         self._config = avs.config.load(configfile=config)
 
-        if ('host_url' not in self._config) or (not self._config['host_url']):
-            self._config['host_url'] = 'avs-alexa-na.amazon.com'
-
-        if self._config['host_url'] == 'dueros-h2.baidu.com':
-            self._config['api'] = 'dcs/avs-compatible-v20160207'
-            self._config['refresh_url'] = 'https://openapi.baidu.com/oauth/2.0/token'
-        else:
-            self._config['api'] = 'v20160207'
-            self._config['refresh_url'] = 'https://api.amazon.com/auth/o2/token'
-
         self.last_activity = datetime.datetime.utcnow()
         self._ping_time = None
 

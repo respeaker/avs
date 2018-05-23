@@ -37,6 +37,16 @@ def load(configfile=None):
             if not ((key in config) and config[key]):
                 raise KeyError('{} should include "{}"'.format(configfile, key))
 
+    if ('host_url' not in config) or (not config['host_url']):
+        config['host_url'] = 'avs-alexa-na.amazon.com'
+
+    if config['host_url'] == 'dueros-h2.baidu.com':
+        config['api'] = 'dcs/avs-compatible-v20160207'
+        config['refresh_url'] = 'https://openapi.baidu.com/oauth/2.0/token'
+    else:
+        config['api'] = 'v20160207'
+        config['refresh_url'] = 'https://api.amazon.com/auth/o2/token'
+
     return config
 
 
