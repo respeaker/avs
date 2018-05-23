@@ -207,10 +207,11 @@ class AudioPlayer(object):
     #     }
     # }
     def Stop(self, directive):
-        self.player.stop()
-        self.PlaybackStopped()
+        if self.state == 'PLAYING' or self.state == 'PAUSED':
+            self.player.stop()
+            self.PlaybackStopped()
 
-        logger.info('audio player is stoped')
+            logger.info('audio player is stoped')
 
     def PlaybackStopped(self):
         self.state = 'STOPPED'
