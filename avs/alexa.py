@@ -10,7 +10,6 @@ import sys
 import tempfile
 import uuid
 import base64
-import hashlib
 import signal
 import threading
 
@@ -158,11 +157,8 @@ class Alexa(object):
 
         # ping every 5 minutes (60 seconds early for latency) to maintain the connection
         self._ping_time = datetime.datetime.utcnow() + datetime.timedelta(seconds=240)
-
         self.event_queue.queue.clear()
-
         self.System.SynchronizeState()
-
         while not self.done:
             # logger.info("Waiting for event to send to AVS")
             # logger.info("Connection socket can_read %s", conn._sock.can_read)
@@ -273,11 +269,10 @@ class Alexa(object):
                 break
 
             if context is None:
-                response = response[pos + blen:]
                 context = {}
             elif context == {}:
                 # a blank line is between header and body
-                header, body = response[2:pos - 2].split('\r\n\r\n', 1)
+                header, body = response[:pos-2].split('\r\n\r\n', 1)
                 if header.find('application/json') >= 0:
                     metadata = json.loads(body.decode('utf-8'))
                     if 'directive' in metadata:
@@ -286,20 +281,19 @@ class Alexa(object):
                             context = metadata['directive']
                         else:
                             self._handle_directive(metadata['directive'])
-                response = response[pos + blen:]
             else:
-                header, body = response[2:pos - 2].split('\r\n\r\n', 1)
+                header, body = response[:pos-2].split('\r\n\r\n', 1)
                 if header.find('application/octet-stream') >= 0:
                     content_id = context['payload']['url'][4:]
-                    filename = base64.urlsafe_b64encode(content_id)
-                    filename = hashlib.md5(filename).hexdigest()
+                    filename = base64.urlsafe_b64encode(content_id)[:8]
                     with open(os.path.join(tempfile.gettempdir(), '{}.mp3'.format(filename)), 'wb') as f:
                         f.write(body)
                     logger.info('write audio to {}.mp3'.format(filename))
                     self._handle_directive(context)
 
-                response = response[pos + blen:]
                 context = {}
+
+            response = response[pos+blen+2:]
 
         return response, context
 

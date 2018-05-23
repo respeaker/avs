@@ -3,7 +3,6 @@ import tempfile
 import threading
 import uuid
 import base64
-import hashlib
 import logging
 
 # prefer mpg123 player as it is more responsive than mpv and gstreamer
@@ -65,8 +64,7 @@ class SpeechSynthesizer(object):
         self.token = directive['payload']['token']
         url = directive['payload']['url']
         if url.startswith('cid:'):
-            filename = base64.urlsafe_b64encode(url[4:])
-            filename = hashlib.md5(filename).hexdigest()
+            filename = base64.urlsafe_b64encode(url[4:])[:8]
             mp3_file = os.path.join(tempfile.gettempdir(), filename + '.mp3')
             if os.path.isfile(mp3_file):
                 self.mp3_file = mp3_file
