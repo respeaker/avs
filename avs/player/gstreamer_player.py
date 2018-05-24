@@ -10,7 +10,7 @@ gi.require_version('Gst', '1.0')
 from gi.repository import Gst, GLib, GObject
 
 
-def setup():
+def setup_message_handler():
     GObject.threads_init()
     Gst.init(None)
     loop = GLib.MainLoop()
@@ -19,15 +19,18 @@ def setup():
     t.daemon = True
     t.start()
 
-setup()
+    return t
 
 
 class Player(object):
+    message_handler = None
+
     def __init__(self):
+        if Player.message_handler is None:
+            Player.message_handler = setup_message_handler()
+
         self.callbacks = {}
-
         self.player = Gst.ElementFactory.make("playbin", "player")
-
         bus = self.player.get_bus()
         bus.add_signal_watch()
         bus.connect('message', self.on_message)
