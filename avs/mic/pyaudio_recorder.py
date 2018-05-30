@@ -1,14 +1,13 @@
 # -*- coding: utf-8 -*-
 
 
-import pyaudio
 import logging
+import pyaudio
 
 logger = logging.getLogger(__file__)
 
 
 class Audio(object):
-
     def __init__(self, rate=16000, frames_size=None, channels=None, device_index=None):
         self.sample_rate = rate
         self.frames_size = frames_size if frames_size else rate / 100
@@ -64,5 +63,3 @@ class Audio(object):
 
     def unlink(self, sink):
         self.sinks.remove(sink)
-
-

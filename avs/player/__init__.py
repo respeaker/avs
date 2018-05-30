@@ -27,6 +27,4 @@ else:
         else:
             raise ImportError('No player available, install one of the players: gstreamer, mpv and mpg123 first')
 
-
 __all__ = ['Player']
-

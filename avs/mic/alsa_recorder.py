@@ -1,12 +1,10 @@
 # -*- coding: utf-8 -*-
 
-import os
 import subprocess
 import threading
 
 
 class Audio(object):
-
     def __init__(self, rate=16000, frames_size=160, channels=1, device_name='default'):
         self.rate = rate
         self.frames_size = frames_size

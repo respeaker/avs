@@ -4,8 +4,8 @@
 
 import logging
 import sys
-import time
 import threading
+import time
 import uuid
 
 if sys.version_info < (3, 0):

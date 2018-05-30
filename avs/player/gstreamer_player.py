@@ -2,10 +2,10 @@
 
 """Player using gstreamer."""
 
-import time
-import threading
-
 import gi
+import threading
+import time
+
 gi.require_version('Gst', '1.0')
 from gi.repository import Gst, GLib, GObject
 
@@ -68,8 +68,8 @@ class Player(object):
             self.player.set_state(Gst.State.NULL)
             if 'error' in self.callbacks:
                 self.callbacks['error']()
-        # else:
-        #     print(message.type)
+                # else:
+                #     print(message.type)
 
     @property
     def duration(self):
@@ -101,4 +101,3 @@ class Player(object):
         # GST_STATE_PLAYING             the element is PLAYING, the GstClock is running and the data is flowing.
         _, state, _ = self.player.get_state(Gst.SECOND)
         return 'FINISHED' if state != Gst.State.PLAYING else 'PLAYING'
-

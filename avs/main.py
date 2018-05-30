@@ -6,12 +6,11 @@ Hands-free alexa with respeaker using pocketsphinx to search keyword
 It depends on respeaker python library (https://github.com/respeaker/respeaker_python_library)
 """
 
-
-import sys
-import signal
-import time
-import threading
 import logging
+import signal
+import sys
+import threading
+import time
 
 if sys.version_info < (3, 0):
     import Queue as queue
@@ -22,9 +21,9 @@ from avs.alexa import Alexa
 from avs.mic import Audio
 from respeaker.pixel_ring import pixel_ring
 
-
 logger = logging.getLogger(__file__)
 logging.basicConfig(level=logging.INFO)
+
 
 class KWS(object):
     def __init__(self):
@@ -112,7 +111,7 @@ def main():
     audio.start()
 
     is_quit = threading.Event()
-    
+
     def signal_handler(signal, frame):
         print('Quit')
         is_quit.set()

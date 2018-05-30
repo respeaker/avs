@@ -2,12 +2,13 @@
 
 """https://developer.amazon.com/public/solutions/alexa/alexa-voice-service/reference/alerts"""
 
+import datetime
 import os
 import time
-import datetime
-import dateutil.parser
-from threading import Timer, Event
 import uuid
+from threading import Timer, Event
+
+import dateutil.parser
 
 # prefer mpg123 player as it is more responsive than mpv and gstreamer
 if os.system('which mpg123 >/dev/null') == 0:

@@ -3,9 +3,8 @@
 """Player using MPV"""
 
 import os
-import signal
-import threading
 import subprocess
+import threading
 
 if os.system('which mpv >/dev/null') != 0:
     raise ImportError('mpv not found, install it first')
@@ -46,9 +45,9 @@ class Player(object):
 
         if self.process and self.process.poll() == None:
             os.write(self.tty, 'q')
-            
+
         self.state = 'PLAYING'
-        
+
     def stop(self):
         if self.process and self.process.poll() == None:
             os.write(self.tty, 'q')

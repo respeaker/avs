@@ -1,9 +1,9 @@
+import base64
+import logging
 import os
 import tempfile
 import threading
 import uuid
-import base64
-import logging
 
 # prefer mpg123 player as it is more responsive than mpv and gstreamer
 if os.system('which mpg123 >/dev/null') == 0:

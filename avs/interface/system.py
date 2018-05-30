@@ -1,8 +1,7 @@
-
 """https://developer.amazon.com/public/solutions/alexa/alexa-voice-service/reference/system"""
 
-import uuid
 import datetime
+import uuid
 
 
 class System(object):

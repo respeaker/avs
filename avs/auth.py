@@ -1,13 +1,13 @@
+import datetime
+import json
+import time
+import uuid
 
+import click
+import requests
 import tornado.httpserver
 import tornado.ioloop
 import tornado.web
-import time
-import json
-import uuid
-import requests
-import datetime
-import click
 
 import avs.config
 
@@ -116,4 +116,3 @@ def main(config, output):
 
 if __name__ == '__main__':
     main()
-

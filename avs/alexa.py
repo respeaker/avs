@@ -1,17 +1,16 @@
 # -*- coding: utf-8 -*-
 
 
+import base64
 import cgi
-import io
 import json
 import logging
 import os
+import signal
 import sys
 import tempfile
-import uuid
-import base64
-import signal
 import threading
+import uuid
 
 if sys.version_info < (3, 0):
     import Queue as queue
@@ -261,7 +260,7 @@ class Alexa(object):
             # skip small data block
             if pos > blen:
                 # a blank line is between parts
-                parts = response[:pos-2].split('\r\n\r\n', 1)
+                parts = response[:pos - 2].split('\r\n\r\n', 1)
                 if parts[0].find('application/json') >= 0:
                     metadata = json.loads(parts[1].decode('utf-8'))
                     if 'directive' in metadata:
@@ -277,7 +276,7 @@ class Alexa(object):
                             logger.info('write audio to {}.mp3'.format(filename))
                             break
 
-            response = response[pos+blen+2:]
+            response = response[pos + blen + 2:]
 
         for directive in directives:
             self._handle_directive(directive)
@@ -396,7 +395,7 @@ def main():
 
     is_quit = threading.Event()
 
-    def signal_handler(signal, frame):
+    def signal_handler(sig, frame):
         print('Quit')
         is_quit.set()
 

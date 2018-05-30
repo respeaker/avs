@@ -3,12 +3,12 @@
 """Player using mpg123"""
 
 import os
-import signal
-import threading
 import subprocess
+import threading
 
 if os.system('which mpg123 >/dev/null') != 0:
     ImportError('mpg123 not found, install it first')
+
 
 class Player(object):
     def __init__(self):
@@ -30,7 +30,7 @@ class Player(object):
             print('Playing {}'.format(self.audio))
 
             master, slave = os.openpty()
-            self.process = subprocess.Popen(['mpg123','-q', '-C', self.audio], stdin=master)
+            self.process = subprocess.Popen(['mpg123', '-q', '-C', self.audio], stdin=master)
             self.tty = slave
 
             self.process.wait()
@@ -48,9 +48,9 @@ class Player(object):
 
         if self.process and self.process.poll() == None:
             os.write(self.tty, 'q')
-            
+
         self.state = 'PLAYING'
-        
+
     def stop(self):
         if self.process and self.process.poll() == None:
             os.write(self.tty, 'q')

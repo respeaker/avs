@@ -2,20 +2,20 @@
 
 """https://developer.amazon.com/public/solutions/alexa/alexa-voice-service/reference/audioplayer"""
 
-import os
-import time
-import tempfile
-import uuid
 import base64
 import hashlib
-import requests
 import logging
+import os
+import tempfile
+import uuid
 from contextlib import closing
+
+import requests
+
 try:
     from urllib.parse import urlparse
 except ImportError:
     from urlparse import urlparse
-
 
 from avs.player import Player
 
