@@ -71,7 +71,7 @@ class SpeechSynthesizer(object):
         self.token = directive['payload']['token']
         url = directive['payload']['url']
         if url.startswith('cid:'):
-            filename = base64.urlsafe_b64encode(url[4:])[:8]
+            filename = base64.urlsafe_b64encode(url[4:].encode('utf-8'))[:8].decode('utf-8')
             mp3_file = os.path.join(tempfile.gettempdir(), filename + '.mp3')
             if os.path.isfile(mp3_file):
                 self.mp3_file = mp3_file
@@ -87,6 +87,8 @@ class SpeechSynthesizer(object):
 
                 # will be set at SpeechFinished() if the player reaches the End Of Stream or gets a error
                 # self.finished.wait()
+            else:
+                logger.warning('not find {}'.format(mp3_file))
 
     def SpeechStarted(self):
         self._state = 'PLAYING'

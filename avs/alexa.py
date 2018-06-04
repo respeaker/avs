@@ -140,7 +140,7 @@ class Alexa(object):
             downchannel_response.headers['content-type'][0].decode('utf-8'))
         downchannel_boundary = '--{}'.format(pdict['boundary']).encode('utf-8')
         downchannel = conn.streams[downchannel_id]
-        downchannel_buffer = ''
+        downchannel_buffer = b''
         eventchannel_boundary = 'seeed-voice-engine'
 
         # ping every 5 minutes (60 seconds early for latency) to maintain the connection
@@ -148,8 +148,6 @@ class Alexa(object):
         self.event_queue.queue.clear()
         self.System.SynchronizeState()
         while not self.done:
-            # logger.info("Waiting for event to send to AVS")
-            # logger.info("Connection socket can_read %s", conn._sock.can_read)
             try:
                 event, listener, attachment = self.event_queue.get(
                     timeout=0.25)
@@ -237,7 +235,7 @@ class Alexa(object):
             if response.status == 200:
                 _, pdict = cgi.parse_header(
                     response.headers['content-type'][0].decode('utf-8'))
-                boundary = b'--{}'.format(pdict['boundary'])
+                boundary = '--{}'.format(pdict['boundary']).encode('utf-8')
                 self._parse_response(response.read(), boundary)
             elif response.status == 204:
                 pass
@@ -248,7 +246,7 @@ class Alexa(object):
             if listener and callable(listener):
                 listener()
 
-    def _parse_response(self, response, boundary, buffer=''):
+    def _parse_response(self, response, boundary, buffer=b''):
         directives = []
         blen = len(boundary)
         response = buffer + response
@@ -260,17 +258,17 @@ class Alexa(object):
             # skip small data block
             if pos > blen:
                 # a blank line is between parts
-                parts = response[:pos - 2].split('\r\n\r\n', 1)
-                if parts[0].find('application/json') >= 0:
+                parts = response[:pos - 2].split(b'\r\n\r\n', 1)
+                if parts[0].find(b'application/json') >= 0:
                     metadata = json.loads(parts[1].decode('utf-8'))
                     if 'directive' in metadata:
                         directives.append(metadata['directive'])
-                elif parts[0].find('application/octet-stream') >= 0:
+                elif parts[0].find(b'application/octet-stream') >= 0:
                     for line in parts[0].splitlines():
-                        name, value = line.split(':', 1)
-                        if name.lower() == 'content-id':
+                        name, value = line.split(b':', 1)
+                        if name.lower() == b'content-id':
                             content_id = value.strip()[1:-1]
-                            filename = base64.urlsafe_b64encode(content_id)[:8]
+                            filename = base64.urlsafe_b64encode(content_id)[:8].decode('utf-8')
                             with open(os.path.join(tempfile.gettempdir(), '{}.mp3'.format(filename)), 'wb') as f:
                                 f.write(parts[1])
                             logger.info('write audio to {}.mp3'.format(filename))
@@ -401,7 +399,7 @@ def main():
 
     signal.signal(signal.SIGINT, signal_handler)
 
-    while not is_quit.is_set():
+    while True:
         try:
             input('press ENTER to talk\n')
         except SyntaxError:
@@ -409,6 +407,9 @@ def main():
         except NameError:
             pass
 
+        if is_quit.is_set():
+            break
+            
         alexa.listen()
 
     alexa.stop()

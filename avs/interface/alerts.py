@@ -40,7 +40,7 @@ class Alerts(object):
         """
         Stop all active alerts
         """
-        for token in self.active_alerts.keys():
+        for token in list(self.active_alerts.keys()):
             self.AlertStopped(token)
 
         self.active_alerts = {}
