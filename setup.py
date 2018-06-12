@@ -28,7 +28,7 @@ test_requirements = [
 
 setup(
     name='avs',
-    version='0.4.0',
+    version='0.5.0',
     description="Alexa Voice Service Python SDK",
     long_description=long_description,
     long_description_content_type='text/markdown',
