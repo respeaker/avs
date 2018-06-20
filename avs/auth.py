@@ -104,8 +104,8 @@ def main(config, output):
     webserver = threading.Thread(target=login, args=(config, output))
     webserver.daemon = True
     webserver.start()
-    print("A web page should is opened. If not, go to http://127.0.0.1:3000 to start")
-    webbrowser.open('http://127.0.0.1:3000')
+    print("A web page should is opened. If not, go to http://localhost:3000 to start")
+    webbrowser.open('http://localhost:3000')
 
     while webserver.is_alive():
         try:
