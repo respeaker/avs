@@ -81,37 +81,30 @@ class MainHandler(tornado.web.RequestHandler):
             self.redirect(p.url)
 
 
-def login(config, output):
-    application = tornado.web.Application([(r".*", MainHandler, dict(config=config, output=output))])
-    http_server = tornado.httpserver.HTTPServer(application)
-    http_server.listen(3000)
-    tornado.ioloop.IOLoop.instance().start()
-    tornado.ioloop.IOLoop.instance().close()
+def open_webbrowser():
+    try:
+        import webbrowser
+    except ImportError:
+        print('Go to http://{your device IP}:3000 to start')
+        return
+
+    time.sleep(0.1)
+    print("A web page should is opened. If not, go to http://127.0.0.1:3000 to start")
+    webbrowser.open('http://127.0.0.1:3000')
 
 
 @click.command()
 @click.option('--config', '-c', help='configuration json file with product_id, client_id and client_secret')
 @click.option('--output', '-o', default=avs.config.DEFAULT_CONFIG_FILE, help='output json file with refresh token')
 def main(config, output):
-    try:
-        import webbrowser
-    except ImportError:
-        print('Go to http://{your device IP}:3000 to start')
-        login(config, output)
-        return
-
     import threading
-    webserver = threading.Thread(target=login, args=(config, output))
-    webserver.daemon = True
-    webserver.start()
-    print("A web page should is opened. If not, go to http://127.0.0.1:3000 to start")
-    webbrowser.open('http://127.0.0.1:3000')
+    threading.Thread(target=open_webbrowser).start()
 
-    while webserver.is_alive():
-        try:
-            time.sleep(1)
-        except KeyboardInterrupt:
-            break
+    application = tornado.web.Application([(r".*", MainHandler, dict(config=config, output=output))])
+    http_server = tornado.httpserver.HTTPServer(application)
+    http_server.listen(3000)
+    tornado.ioloop.IOLoop.instance().start()
+    tornado.ioloop.IOLoop.instance().close()
 
 
 if __name__ == '__main__':
