@@ -70,36 +70,37 @@ Python Alexa Voice Service App
 
 3. run the following python script and use the keyword `alexa` to start a conversation with alexa
 
+    ```
+    import signal
+    from voice_engine.source import Source
+    from voice_engine.kws import KWS
+    from avs.alexa import Alexa
 
-        import signal
-        from voice_engine.source import Source
-        from voice_engine.kws import KWS
-        from avs.alexa import Alexa
 
+    src = Source(rate=16000)
+    kws = KWS(model='alexa')
+    alexa = Alexa()
 
-        src = Source(rate=16000)
-        kws = KWS(model='alexa')
-        alexa = Alexa()
+    src.pipeline(kws, alexa)
 
-        src.pipeline(kws, alexa)
+    def on_detected(keyword):
+        print('detected {}'.format(keyword))
+        alexa.listen()
 
-        def on_detected(keyword):
-            print('detected {}'.format(keyword))
-            alexa.listen()
+    kws.set_callback(on_detected)
 
-        kws.set_callback(on_detected)
+    is_quit = []
+    def signal_handler(signal, frame):
+        print('Quit')
+        is_quit.append(True)
 
-        is_quit = []
-        def signal_handler(signal, frame):
-            print('Quit')
-            is_quit.append(True)
+    signal.signal(signal.SIGINT, signal_handler)
 
-        signal.signal(signal.SIGINT, signal_handler)
-
-        src.pipeline_start()
-        while not is_quit:
-            time.sleep(1)
-        src.pipeline_stop()
+    src.pipeline_start()
+    while not is_quit:
+        time.sleep(1)
+    src.pipeline_stop()
+    ```
 
 ### To do
 * Speaker interface
