@@ -44,13 +44,13 @@ class Player(object):
         self.event.set()
 
         if self.process and self.process.poll() == None:
-            os.write(self.tty, 'q')
+            os.write(self.tty, b'q')
 
         self.state = 'PLAYING'
 
     def stop(self):
         if self.process and self.process.poll() == None:
-            os.write(self.tty, 'q')
+            os.write(self.tty, b'q')
         self.state = 'NULL'
 
     def pause(self):
@@ -63,7 +63,7 @@ class Player(object):
     def resume(self):
         if self.state == 'PAUSED':
             self.state = 'PLAYING'
-            os.write(self.tty, ' ')
+            os.write(self.tty, b' ')
 
     # name: {eos, ...}
     def add_callback(self, name, callback):
