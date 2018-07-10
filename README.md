@@ -64,21 +64,33 @@ Python Alexa Voice Service App
 
 #### Using Snowboy for Keyword Spotting
 1. Install [Snowboy](https://github.com/Kitt-AI/snowboy)
+
+    ```
+    git clone --depth 1 https://github.com/Kitt-AI/snowboy.git snowboy_github
+    cd snowboy_github
+    sudo apt install libatlas-base-dev swig
+    python setup.py build
+    sudo pip install .
+    ```
 2. Install voice-engine python library
 
     `sudo pip install voice-engine`
 
 3. run the following python script and use the keyword `alexa` to start a conversation with alexa
 
-    ```
+    ```python
+    import time
     import signal
     from voice_engine.source import Source
     from voice_engine.kws import KWS
     from avs.alexa import Alexa
+    import logging
+
+    logging.basicConfig(level=logging.DEBUG)
 
 
     src = Source(rate=16000)
-    kws = KWS(model='alexa')
+    kws = KWS(model='snowboy')
     alexa = Alexa()
 
     src.pipeline(kws, alexa)
