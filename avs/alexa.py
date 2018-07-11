@@ -30,6 +30,7 @@ from avs.interface.speech_recognizer import SpeechRecognizer
 from avs.interface.speech_synthesizer import SpeechSynthesizer
 from avs.interface.system import System
 import avs.config
+import avs.auth
 
 logger = logging.getLogger(__name__)
 
@@ -190,7 +191,7 @@ class Alexa(object):
                 'context': self.context,
                 'event': event
             }
-            logger.info('metadata: {}'.format(json.dumps(metadata, indent=4)))
+            # logger.info('metadata: {}'.format(json.dumps(metadata, indent=4)))
 
             json_part = '--{}\r\n'.format(eventchannel_boundary)
             json_part += 'Content-Disposition: form-data; name="metadata"\r\n'
@@ -381,7 +382,11 @@ class Alexa(object):
 def main():
     logging.basicConfig(level=logging.INFO)
 
-    config = None if len(sys.argv) < 2 else sys.argv[1]
+    config = avs.config.DEFAULT_CONFIG_FILE if len(sys.argv) < 2 else sys.argv[1]
+
+    if not os.path.isfile(config):
+        print('Login amazon alexa or baidu dueros first')
+        avs.auth.auth(None, config)
 
     audio = Audio()
     alexa = Alexa(config)

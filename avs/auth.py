@@ -1,5 +1,6 @@
 import datetime
 import json
+import os
 import time
 import uuid
 
@@ -14,17 +15,8 @@ import avs.config
 
 class MainHandler(tornado.web.RequestHandler):
     def initialize(self, config, output):
-        self.config = avs.config.load(configfile=config)
+        self.config = config
         self.output = output
-
-        if ('host_url' in self.config) and self.config['host_url'] == 'dueros-h2.baidu.com':
-            self.token_url = 'https://openapi.baidu.com/oauth/2.0/token'
-            self.oauth_url = 'https://openapi.baidu.com/oauth/2.0/authorize'
-            self.scope = 'basic'
-        else:
-            self.token_url = 'https://api.amazon.com/auth/o2/token'
-            self.oauth_url = 'https://www.amazon.com/ap/oa'
-            self.scope = 'alexa:all'
 
     @tornado.web.asynchronous
     def get(self):
@@ -39,9 +31,15 @@ class MainHandler(tornado.web.RequestHandler):
                 "redirect_uri": redirect_uri
             }
 
-            r = requests.post(self.token_url, data=payload)
+            if self.config['host_url'] == 'dueros-h2.baidu.com':
+                token_url = 'https://openapi.baidu.com/oauth/2.0/token'
+                message = 'Succeed to login Baidu DuerOS'
+            else:
+                token_url = 'https://api.amazon.com/auth/o2/token'
+                message = 'Succeed to login Amazon Alexa Voice Service'
+
+            r = requests.post(token_url, data=payload)
             config = r.json()
-            print(r.text)
             self.config['refresh_token'] = config['refresh_token']
 
             if 'access_token' in config:
@@ -53,32 +51,66 @@ class MainHandler(tornado.web.RequestHandler):
             print(json.dumps(self.config, indent=4))
             avs.config.save(self.config, configfile=self.output)
 
-            self.write('Succeed to login Amazon Alexa Voice Service')
+            self.write(message)
             self.finish()
             tornado.ioloop.IOLoop.instance().stop()
-        else:
-            scope_data = json.dumps({
-                "alexa:all": {
-                    "productID": self.config['product_id'],
-                    "productInstanceAttributes": {
-                        "deviceSerialNumber": uuid.uuid4().hex
-                    }
+        elif self.request.path == '/alexa':
+            self.alexa_oauth()
+        elif self.request.path == '/dueros':
+            self.dueros_oauth()
+        elif self.request.path == '/':
+            index_html = os.path.realpath(os.path.join(os.path.dirname(__file__), 'resources/web/index.html'))
+            with open(index_html) as f:
+                self.write(f.read())
+                self.finish()
+
+    def alexa_oauth(self):
+        if 'client_secret' not in self.config:
+            self.config.update(avs.config.alexa())
+        if 'dueros-device-id' in self.config:
+            del self.config['dueros-device-id']
+            self.config.update(avs.config.alexa())
+
+        oauth_url = 'https://www.amazon.com/ap/oa'
+        redirect_uri = self.request.protocol + "://" + self.request.host + "/authresponse"
+
+        scope_data = json.dumps({
+            "alexa:all": {
+                "productID": self.config['product_id'],
+                "productInstanceAttributes": {
+                    "deviceSerialNumber": uuid.uuid4().hex
                 }
-            })
-            payload = {
-                "client_id": self.config['client_id'],
-                "scope": self.scope,
-                # "scope_data": scope_data,
-                "response_type": "code",
-                "redirect_uri": redirect_uri
             }
+        })
+        payload = {
+            "client_id": self.config['client_id'],
+            "scope": "alexa:all",
+            "scope_data": scope_data,
+            "response_type": "code",
+            "redirect_uri": redirect_uri
+        }
 
-            if ('host_url' not in self.config) or self.config['host_url'] != 'dueros-h2.baidu.com':
-                payload['scope_data'] = scope_data
+        req = requests.Request('GET', oauth_url, params=payload)
+        p = req.prepare()
+        self.redirect(p.url)
 
-            req = requests.Request('GET', self.oauth_url, params=payload)
-            p = req.prepare()
-            self.redirect(p.url)
+    def dueros_oauth(self):
+        if 'client_secret' not in self.config:
+            self.config.update(avs.config.dueros())
+        
+        oauth_url = 'https://openapi.baidu.com/oauth/2.0/authorize'
+        redirect_uri = self.request.protocol + "://" + self.request.host + "/authresponse"
+
+        payload = {
+            "client_id": self.config["client_id"],
+            "scope": "basic",
+            "response_type": "code",
+            "redirect_uri": redirect_uri
+        }
+
+        req = requests.Request('GET', oauth_url, params=payload)
+        p = req.prepare()
+        self.redirect(p.url)
 
 
 def open_webbrowser():
@@ -93,18 +125,23 @@ def open_webbrowser():
     webbrowser.open('http://127.0.0.1:3000')
 
 
-@click.command()
-@click.option('--config', '-c', help='configuration json file with product_id, client_id and client_secret')
-@click.option('--output', '-o', default=avs.config.DEFAULT_CONFIG_FILE, help='output json file with refresh token')
-def main(config, output):
+def auth(config, output):
     import threading
     threading.Thread(target=open_webbrowser).start()
+
+    config = avs.config.load(config) if config else {}
 
     application = tornado.web.Application([(r".*", MainHandler, dict(config=config, output=output))])
     http_server = tornado.httpserver.HTTPServer(application)
     http_server.listen(3000)
     tornado.ioloop.IOLoop.instance().start()
     tornado.ioloop.IOLoop.instance().close()
+
+@click.command()
+@click.option('--config', '-c', help='configuration json file with product_id, client_id and client_secret')
+@click.option('--output', '-o', default=avs.config.DEFAULT_CONFIG_FILE, help='output json file with refresh token')
+def main(config, output):
+    auth(config, output)
 
 
 if __name__ == '__main__':
