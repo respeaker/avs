@@ -9,6 +9,9 @@ DEFAULT_CONFIG_FILE = os.path.join(os.path.expanduser('~'), '.avs.json')
 
 
 def load(configfile=DEFAULT_CONFIG_FILE):
+    if configfile is None:
+        configfile = DEFAULT_CONFIG_FILE
+        
     if not os.path.isfile(configfile):
         raise RuntimeError('No configuration file')
 
