@@ -36,7 +36,7 @@ Python Alexa Voice Service App
 
 * For Debian/Ubuntu/Raspbian
 
-      sudo apt-install mpg123 mpv
+      sudo apt-get install mpg123 mpv
       sudo apt-get install gstreamer1.0-plugins-good gstreamer1.0-plugins-bad gstreamer1.0-plugins-ugly \
       gir1.2-gstreamer-1.0 python-gi python-gst-1.0
       sudo apt-get install python-pyaudio
