@@ -111,7 +111,8 @@ class SpeechSynthesizer(object):
         self.finished.set()
         self._state = 'FINISHED'
 
-        self.alexa.state_listener.on_finished()
+        # repeated operation, will cause bug when we try to listen() at 'on_speaking' state
+        # self.alexa.state_listener.on_finished()
 
         if self.alexa.AudioPlayer.state == 'PAUSED':
             self.alexa.AudioPlayer.resume()
