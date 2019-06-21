@@ -13,7 +13,7 @@ with open('README.md') as f:
 requirements = [
     'click',
     'hyper',
-    'tornado',
+    'tornado==5.1.1',
     'requests',
     'python-dateutil'
 ]
@@ -28,7 +28,7 @@ test_requirements = [
 
 setup(
     name='avs',
-    version='0.5.4',
+    version='0.5.5',
     description="Alexa Voice Service Python SDK",
     long_description=long_description,
     long_description_content_type='text/markdown',
