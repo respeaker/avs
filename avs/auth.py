@@ -32,13 +32,23 @@ class MainHandler(tornado.web.RequestHandler):
             }
 
             if self.config['host_url'] == 'dueros-h2.baidu.com':
+                payload['grant_type']='client_credentials'
                 token_url = 'https://openapi.baidu.com/oauth/2.0/token'
                 message = 'Succeed to login Baidu DuerOS'
+
+                headers = {'content-type': 'charset=utf8'}
+                r = requests.get(token_url, params=payload, headers=headers)
             else:
                 token_url = 'https://api.amazon.com/auth/o2/token'
                 message = 'Succeed to login Amazon Alexa Voice Service'
+                r = requests.post(token_url, data=payload)
 
-            r = requests.post(token_url, data=payload)
+            print("--------------")
+            print(r.url)
+            print(r.text)
+            print(payload)
+            print("--------------")
+
             config = r.json()
             self.config['refresh_token'] = config['refresh_token']
 
