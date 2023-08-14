@@ -13,7 +13,7 @@ with open('README.md') as f:
 requirements = [
     'click',
     'hyper',
-    'tornado==5.1.1',
+    'tornado==6.3.3',
     'requests',
     'python-dateutil'
 ]
